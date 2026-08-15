@@ -46,7 +46,7 @@ body {
 
 /* layout */
 .layout { display: grid; grid-template-columns: 260px 1fr; gap: 18px; align-items: start; }
-.filters { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; position: sticky; top: 72px; }
+.filters { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; position: sticky; top: 72px; max-height: calc(100vh - 90px); overflow-y: auto; overscroll-behavior: contain; }
 .frow { margin-bottom: 16px; }
 .frow > label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 8px; }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -114,5 +114,5 @@ table.cmp tbody th { background: #fafbfc; width: 90px; color: var(--sub); }
 @media (max-width: 720px) {
   .entries, .list { grid-template-columns: 1fr; }
   .layout { grid-template-columns: 1fr; }
-  .filters { position: static; }
+  .filters { position: static; max-height: none; overflow: visible; }
 }
