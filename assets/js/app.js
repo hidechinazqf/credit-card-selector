@@ -139,7 +139,7 @@ function applyFilter() {
       if (FILTER.fee === '3000' && cost > 3000) return false;
     }
     if (FILTER.kw) {
-      const hay = (c.cardName + ' ' + c.benefits + ' ' + c.bank).toLowerCase();
+      const hay = (c.cardName + ' ' + c.benefits + ' ' + c.bank + ' ' + (c.perks || []).map(p => p.text).join(' ')).toLowerCase();
       if (!hay.includes(FILTER.kw.toLowerCase())) return false;
     }
     return true;
@@ -208,6 +208,20 @@ function renderCompare() {
     </section>`;
 }
 
+/* ---------- 完整权益清单 ---------- */
+const PERK_ORDER = ['贵宾厅','接送机','酒店会籍','健康医疗','运动健身','返现','里程积分','出行保障','生活礼遇','其他'];
+function renderPerks(c) {
+  if (!c.perks || !c.perks.length) return '';
+  const groups = {};
+  c.perks.forEach(p => { (groups[p.cat] = groups[p.cat] || []).push(p.text); });
+  const cats = PERK_ORDER.filter(cat => groups[cat])
+    .concat(Object.keys(groups).filter(cat => !PERK_ORDER.includes(cat)));
+  return cats.map(cat => {
+    const items = groups[cat].map(t => `<li>${esc(t)}</li>`).join('');
+    return `<div class="perk-group"><div class="perk-cat">${esc(cat)}</div><ul>${items}</ul></div>`;
+  }).join('');
+}
+
 /* ---------- 详情 ---------- */
 function showDetail(c) {
   const v = c.verifyStatus === '✅在售' ? 'ok' : (c.verifyStatus === '⚠️需更新' ? 'warn' : 'stop');
@@ -224,6 +238,7 @@ function showDetail(c) {
       <div class="card-line"><span>年费</span>${esc(c.annualFee)}</div>
       <div class="card-line"><span>实际成本</span>${esc(c.realCost)}</div>
       <div class="card-line"><span>核心权益</span>${esc(c.benefits)}</div>
+      <div class="perk-wrap"><div class="perk-title">完整权益清单</div>${renderPerks(c)}</div>
       <div class="card-line"><span>办卡门槛</span>${esc(c.eligibility)}</div>
       <div class="card-line"><span>核验状态</span><span class="verify ${v}">${esc(c.verifyStatus)}</span> <small>（${esc(c.verifyDate)}）</small></div>
       ${c.note ? `<div class="card-note">📌 ${esc(c.note)}</div>` : ''}
