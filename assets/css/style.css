@@ -75,6 +75,8 @@ body {
 .card-line { font-size: 13px; margin: 3px 0; }
 .card-line span:first-child, .card-line > span { color: var(--sub); margin-right: 6px; }
 .card-note { font-size: 12px; color: #b45309; background: #fff8ec; padding: 6px 8px; border-radius: 8px; margin-top: 8px; }
+.card-perks { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+.pc { font-size: 11px; color: var(--brand-d); background: #eef2ff; padding: 2px 8px; border-radius: 999px; }
 .card-actions { margin-top: auto; padding-top: 10px; }
 .btn-mini { background: #eef2ff; color: var(--brand-d); border: 1px solid #dbe4ff; border-radius: 8px; padding: 6px 10px; cursor: pointer; font: inherit; font-size: 13px; }
 .btn-mini.on { background: var(--brand); color: #fff; border-color: var(--brand); }

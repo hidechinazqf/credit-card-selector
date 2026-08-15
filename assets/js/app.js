@@ -32,6 +32,7 @@ async function boot() {
     const res = await fetch('./data/cards.json', { cache: 'no-store' });
     if (!res.ok) throw new Error('HTTP ' + res.status);
     CARDS = await res.json();
+    CARDS.forEach((c, i) => { c._i = i; });
   } catch (e) {
     document.getElementById('app').innerHTML =
       '<div class="warn">⚠️ 无法加载 <code>data/cards.json</code>。' +
@@ -67,7 +68,7 @@ function goHome() {
 }
 
 /* ---------- 视图：筛选 ---------- */
-const FILTER = { banks: [], tiers: [], fee: 'all', orgs: [], kw: '', studentOnly: false, perks: [] };
+const FILTER = { banks: [], tiers: [], fee: 'all', orgs: [], kw: '', studentOnly: false, perks: [], onSaleOnly: false };
 
 // 卡库里实际出现的权益类目（按 PERK_ORDER 顺序，便于筛选区稳定展示）
 function perkCats() {
@@ -103,6 +104,9 @@ function renderFilter() {
           <div class="frow"><label>仅看学生可办</label>
             <label class="chip"><input type="checkbox" onchange="onStudent(this)" ${FILTER.studentOnly?'checked':''}> 在校生 / 毕业不久也能办</label>
           </div>
+          <div class="frow"><label>仅看在售</label>
+            <label class="chip"><input type="checkbox" onchange="onSale(this)" ${FILTER.onSaleOnly?'checked':''}> 隐藏待复核卡片</label>
+          </div>
           <div class="frow"><label>权益类型（含其一即可）</label>
             <div class="chips">${perkCats().map(cat => `<label class="chip"><input type="checkbox" value="${esc(cat)}" onchange="onPerk(this)" ${FILTER.perks.includes(cat)?'checked':''}> ${esc(cat)}</label>`).join('')}</div>
           </div>
@@ -134,9 +138,10 @@ function onOrg(el){ toggleArr(FILTER.orgs, el.value, el.checked); applyFilter();
 function onPerk(el){ toggleArr(FILTER.perks, el.value, el.checked); applyFilter(); }
 function onFee(v){ FILTER.fee = v; applyFilter(); }
 function onStudent(el){ FILTER.studentOnly = el.checked; applyFilter(); }
+function onSale(el){ FILTER.onSaleOnly = el.checked; applyFilter(); }
 function onKw(el){ FILTER.kw = el.value.trim(); applyFilter(); }
 function toggleArr(a, v, on){ const i = a.indexOf(v); if(on && i<0) a.push(v); if(!on && i>=0) a.splice(i,1); }
-function resetFilter(){ FILTER.banks=[]; FILTER.tiers=[]; FILTER.orgs=[]; FILTER.fee='all'; FILTER.kw=''; FILTER.studentOnly=false; FILTER.perks=[]; renderFilter(); }
+function resetFilter(){ FILTER.banks=[]; FILTER.tiers=[]; FILTER.orgs=[]; FILTER.fee='all'; FILTER.kw=''; FILTER.studentOnly=false; FILTER.perks=[]; FILTER.onSaleOnly=false; renderFilter(); }
 
 function applyFilter() {
   let list = CARDS.filter(c => {
@@ -144,6 +149,7 @@ function applyFilter() {
     if (FILTER.banks.length && !FILTER.banks.includes(c.bank)) return false;
     if (FILTER.orgs.length && !FILTER.orgs.includes(c.cardOrg)) return false;
     if (FILTER.studentOnly && !isStudentFriendly(c)) return false;
+    if (FILTER.onSaleOnly && c.verifyStatus !== '✅在售') return false;
     if (FILTER.perks.length) {
       const cats = (c.perks || []).map(p => p.cat);
       if (!FILTER.perks.some(pc => cats.includes(pc))) return false;
@@ -160,6 +166,7 @@ function applyFilter() {
     }
     return true;
   });
+  list.sort((a, b) => a.tier - b.tier || costNum(a) - costNum(b));
   document.getElementById('count').textContent = `共 ${list.length} 张`;
   const listEl = document.getElementById('list');
   if (!list.length) { listEl.innerHTML = '<div class="empty">没有符合条件的卡，试试放宽筛选。</div>'; return; }
@@ -168,31 +175,34 @@ function applyFilter() {
 }
 
 function cardHTML(c) {
-  const inCmp = compareSet.some(x => x.cardName === c.cardName);
+  const inCmp = compareSet.some(x => x._i === c._i);
   const vBadge = c.verifyStatus === '✅在售' ? 'ok' : (c.verifyStatus === '⚠️需更新' ? 'warn' : 'stop');
+  const pcats = uniq((c.perks || []).map(p => p.cat)).slice(0, 4);
   return `
     <article class="card">
       <div class="card-top">
         <span class="badge ${TIERS[c.tier].cls}">${TIERS[c.tier].label}</span>
         <span class="verify ${vBadge}" title="核验状态">${esc(c.verifyStatus)}</span>
       </div>
-      <h3 class="card-name" onclick='showDetail(${JSON.stringify(c).replace(/'/g,"&#39;")})'>${esc(c.cardName)}</h3>
+      <h3 class="card-name" onclick="showDetail(${c._i})">${esc(c.cardName)}</h3>
       <div class="card-bank">${esc(c.bank)} · ${esc(c.cardOrg)}</div>
       <div class="card-line"><span>年费</span>${esc(c.annualFee)}</div>
       <div class="card-line"><span>实际成本</span>${esc(c.realCost)}</div>
       <div class="card-line"><span>核心权益</span>${esc(c.benefits)}</div>
       <div class="card-line"><span>办卡门槛</span>${esc(c.eligibility)}</div>
+      ${pcats.length ? `<div class="card-perks">${pcats.map(cat => `<span class="pc">${esc(cat)}</span>`).join('')}</div>` : ''}
       ${c.note ? `<div class="card-note">📌 ${esc(c.note)}</div>` : ''}
       <div class="card-actions">
-        <button class="btn-mini ${inCmp?'on':''}" onclick='toggleCompare(${JSON.stringify(c).replace(/'/g,"&#39;")})'>${inCmp?'✓ 已加入对比':'+ 加入对比'}</button>
+        <button class="btn-mini ${inCmp?'on':''}" onclick="toggleCompare(${c._i})">${inCmp?'✓ 已加入对比':'+ 加入对比'}</button>
       </div>
     </article>`;
 }
 
 /* ---------- 对比 ---------- */
-function toggleCompare(c) {
-  const i = compareSet.findIndex(x => x.cardName === c.cardName);
-  if (i >= 0) compareSet.splice(i, 1);
+function toggleCompare(i) {
+  const c = CARDS[i];
+  const j = compareSet.findIndex(x => x._i === i);
+  if (j >= 0) compareSet.splice(j, 1);
   else { if (compareSet.length >= 3) { alert('最多对比 3 张'); return; } compareSet.push(c); }
   applyFilter();
 }
@@ -239,10 +249,9 @@ function renderPerks(c) {
 }
 
 /* ---------- 详情 ---------- */
-function showDetail(c) {
+function showDetail(i) {
+  const c = CARDS[i];
   const v = c.verifyStatus === '✅在售' ? 'ok' : (c.verifyStatus === '⚠️需更新' ? 'warn' : 'stop');
-  const app = document.getElementById('app');
-  const prev = app.innerHTML;
   const overlay = document.createElement('div');
   overlay.className = 'modal-mask';
   overlay.innerHTML = `
@@ -296,7 +305,7 @@ function runRecommend() {
       <div class="rec-top"><span class="badge ${TIERS[s.c.tier].cls}">${TIERS[s.c.tier].label}</span><b>${esc(s.c.cardName)}</b><span class="card-bank">${esc(s.c.bank)}</span></div>
       <div class="card-line"><span>年费</span>${esc(s.c.annualFee)}　<span>成本</span>${esc(s.c.realCost)}</div>
       <ul class="reasons">${s.reasons.map(r => `<li>${esc(r)}</li>`).join('')}</ul>
-      <button class="btn-mini" onclick='showDetail(${JSON.stringify(s.c).replace(/'/g,"&#39;")})'>查看详情</button>
+      <button class="btn-mini" onclick="showDetail(${s.c._i})">查看详情</button>
     </div>`).join('');
   rec.scrollIntoView({ behavior: 'smooth' });
 }
