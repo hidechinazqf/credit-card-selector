@@ -1,0 +1,54 @@
+name: 卡片信息纠错
+about: 发现某张信用卡的年费 / 权益 / 停发等信息有误，反馈给维护者核对并更新
+title: "[纠错] <银行> <卡名>"
+labels: [数据纠错]
+body:
+  - type: input
+    id: bank
+    attributes:
+      label: 银行
+      placeholder: 如 招商银行
+    validations:
+      required: true
+  - type: input
+    id: card
+    attributes:
+      label: 卡名
+      placeholder: 如 运通百夫长白金
+    validations:
+      required: true
+  - type: dropdown
+    id: type
+    attributes:
+      label: 错误类型
+      options:
+        - 年费 / 成本有误
+        - 权益描述有误或缺失
+        - 该卡已停发 / 更名
+        - 核验状态过时（⚠️）
+        - 其他
+    validations:
+      required: true
+  - type: textarea
+    id: correct
+    attributes:
+      label: 你认为正确的信息
+      description: 越具体越好，含次数 / 门槛 / 日期等
+      placeholder: 如 年费实为 3600 且刚性不可减免；或 已新增"每年 2 次免费洗牙"
+    validations:
+      required: true
+  - type: input
+    id: source
+    attributes:
+      label: 信息来源（选填，便于复核）
+      description: 官网页面 / App 截图 / 客服确认 等
+      placeholder: 如 招行官网 xxx 页面、App 权益页截图
+    validations:
+      required: false
+  - type: checkboxes
+    id: consent
+    attributes:
+      label: 授权
+      options:
+        - label: 允许维护者直接据此更新 cards.json（无需等我确认）
+          required: false

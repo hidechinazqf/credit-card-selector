@@ -1,0 +1,13 @@
+name: 功能建议
+about: 对筛选 / 推荐 / 对比等功能的改进想法
+title: "[建议] "
+labels: [功能建议]
+body:
+  - type: textarea
+    id: detail
+    attributes:
+      label: 你的建议
+      description: 描述想加的能力或想改的体验，最好附使用场景
+      placeholder: 如 希望筛选结果能按"年费成本"排序
+    validations:
+      required: true

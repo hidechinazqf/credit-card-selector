@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 我会改代码，想直接提交改动
+    url: https://github.com/hidechinazqf/credit-card-selector/blob/main/README.md#贡献指南
+    about: 看 README 贡献指南，走 Fork + Pull Request
