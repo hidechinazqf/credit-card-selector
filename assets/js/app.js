@@ -311,7 +311,7 @@ function showDetail(i) {
 }
 
 /* ---------- 视图：问卷推荐 ---------- */
-const Q = { identity: '', fee: '', usage: '', value: '', travel: '' };
+const Q = { identity: '', fee: '', usage: '', value: '', travel: '', ai: '' };
 function renderQuestionnaire() {
   const app = document.getElementById('app');
   app.innerHTML = `
@@ -322,6 +322,7 @@ function renderQuestionnaire() {
         ${qBlock('fee','年费你能接受多少？',[['0','必须免年费'],['1k','几百元可接受'],['3k','几千元换权益'],['any','不介意']])}
         ${qBlock('usage','主要用在哪？',[['cn','境内为主'],['os','境外为主'],['both','境内外都有']])}
         ${qBlock('value','你最看重什么？',[['free','免年费省钱'],['lounge','贵宾厅 / 机场'],['cash','返现'],['mile','里程 / 积分'],['credit','攒信用起步']])}
+        ${qBlock('ai','要订阅海外 AI（ChatGPT / Grok / Claude）或海淘吗？',[['yes','是，需要外币通道'],['no','不需要']])}
         ${qBlock('travel','你出行频繁吗？',[['rare','很少'],['some','偶尔'],['often','经常']])}
         <button class="btn-primary" onclick="runRecommend()">查看推荐</button>
       </div>
@@ -334,13 +335,14 @@ function qBlock(key, title, opts) {
 }
 function runRecommend() {
   const rec = document.getElementById('rec');
-  if (!Q.identity || !Q.fee || !Q.usage || !Q.value || !Q.travel) { rec.innerHTML = '<div class="warn">请先答完所有问题。</div>'; return; }
+  if (!Q.identity || !Q.fee || !Q.usage || !Q.value || !Q.ai || !Q.travel) { rec.innerHTML = '<div class="warn">请先答完所有问题。</div>'; return; }
   const scored = CARDS.map(c => scoreCard(c)).filter(x => x.pass).sort((a,b) => b.score - a.score).slice(0, 3);
   if (!scored.length) { rec.innerHTML = '<div class="empty">没有特别匹配的卡，试试放宽年费或身份条件。</div>'; return; }
   rec.innerHTML = `<h3 class="rec-h">为你推荐的 ${scored.length} 张</h3>` + scored.map(s => `
     <div class="rec-card">
       <div class="rec-top"><span class="badge ${TIERS[s.c.tier].cls}">${TIERS[s.c.tier].label}</span><b>${esc(s.c.cardName)}</b><span class="card-bank">${esc(s.c.bank)}</span></div>
       <div class="card-line"><span>年费</span>${esc(s.c.annualFee)}　<span>成本</span>${esc(s.c.realCost)}</div>
+      ${(s.c.scenes||[]).length ? `<div class="card-perks">${s.c.scenes.map(x=>`<span class="pc">${esc(x)}</span>`).join('')}</div>` : ''}
       <ul class="reasons">${s.reasons.map(r => `<li>${esc(r)}</li>`).join('')}</ul>
       <button class="btn-mini" onclick="showDetail(${s.c._i})">查看详情</button>
     </div>`).join('');
@@ -367,6 +369,11 @@ function scoreCard(c) {
   if (Q.usage === 'cn' && /境内|银联/.test(c.benefits + c.cardOrg)) { score += 12; reasons.push('境内使用友好'); }
   if (Q.usage === 'os' && /境外|visa|运通|万事达|龙腾|环球|货币/.test(b + c.cardOrg)) { score += 14; reasons.push('境外 / 出行权益强'); }
   if (Q.usage === 'both') { score += 8; reasons.push('境内外通用'); }
+  // 海外 AI 订阅 / 海淘：明确需要外币通道时，优先推支持卡、剔除不支持的
+  if (Q.ai === 'yes') {
+    if ((c.scenes || []).includes('海外AI订阅')) { score += 22; reasons.push('支持订阅海外 AI / 外币在线支付'); }
+    else { return { pass: false }; }
+  }
   // 看重点
   if (Q.value === 'free' && cost === 0) { score += 18; reasons.push('年费成本为 0'); }
   if (Q.value === 'lounge' && /贵宾厅|龙腾|cip|接送|机场/.test(b)) { score += 18; reasons.push('含贵宾厅 / 接送机权益'); }
