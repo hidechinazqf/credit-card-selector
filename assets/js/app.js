@@ -11,6 +11,33 @@ const TIERS = {
 let CARDS = [];
 let compareSet = []; // 存卡片对象，最多 3 张
 
+/* ---------- 场景榜：回答「哪个卡最好」 ---------- */
+// 编辑精选，基于 2026-08-15 联网调研；每张均已在卡库内，可点开详情。
+const LEADERBOARD = {
+  '攒航空里程': [
+    { name: '兴业银行东航万事达白金卡', why: '线上有分，约 6:1 兑东航里程，年上限 10 万里程，比例行业最佳' },
+    { name: '中信国航世界卡', why: '8:1 兑国航凤凰知音，国航金卡会员免年费' },
+    { name: '中信易卡白金卡(尊贵版)', why: '资产达标+9 倍积分，综合可逼近 2.78:1（需 20 万资产）' },
+    { name: '交通银行标准白金卡(白麒麟)', why: '18:1 兑主流航司，活动多、易参与' },
+  ],
+  '攒酒店积分': [
+    { name: '中信万豪精逸白金卡', why: '980 元/年，性价比最高，直攒万豪积分' },
+    { name: '广发凯悦联名卡(臻选白金)', why: '直攒凯悦积分，冲环球客首选' },
+    { name: '工商银行香格里拉白金卡', why: '直攒香格里拉积分，常消费达标免年费' },
+    { name: '运通百夫长白金', why: '积分转万豪/希尔顿，并送金会籍' },
+  ],
+  '外卡在内地用': [
+    { name: '汇丰香港Pulse银联双币钻石信用卡', why: '内地/澳门云闪付+Apple Pay 常设 4.4% 返现、人民币免货币转换费' },
+    { name: '汇丰中国信用卡', why: '银联钻石+万事达世界之极套卡，内地银联好刷、海外也强' },
+  ],
+  '腾讯/京东返现': [
+    { name: '中信腾讯超V联名信用卡', why: '微信支付笔笔返现 1%-10%，全年最高 360 元' },
+    { name: '民生美运京东联名信用卡', why: '京东支付笔笔返现 1 元，年最高 520 元' },
+    { name: '中信京东PLUS联名信用卡', why: '每周日京东满 99 减 10' },
+  ],
+};
+function findCardByName(n) { return CARDS.find(c => c.cardName === n); }
+
 /* ---------- 工具 ---------- */
 function costNum(c) {
   const s = (c && c.realCost) || '0';
@@ -62,13 +89,50 @@ function goHome() {
           <div class="entry-t">做问卷推荐</div>
           <div class="entry-d">回答几个问题，帮你选出合适的</div>
         </button>
+        <button class="entry" onclick="goLeaderboard()">
+          <div class="entry-ico">🏆</div>
+          <div class="entry-t">场景榜 · 哪个卡最好</div>
+          <div class="entry-d">攒里程 / 攒酒店 / 外卡内地用 / 腾讯京东返现</div>
+        </button>
       </div>
       <p class="hint">当前卡库共 ${CARDS.length} 张（${CARDS.filter(c => c.verifyStatus === '✅在售').length} 在售 / ${CARDS.filter(c => c.verifyStatus !== '✅在售').length} 待复核），覆盖四档：从学生低门槛到高端刚性年费。数据由社区维护，初始于 2026-08-15 经联网核验，权益请以银行官方为准。</p>
     </section>`;
 }
 
+/* ---------- 视图：场景榜 ---------- */
+function goLeaderboard() {
+  const app = document.getElementById('app');
+  const sections = Object.keys(LEADERBOARD).map(title => {
+    const items = LEADERBOARD[title].map((row, i) => {
+      const c = findCardByName(row.name);
+      const idx = c ? c._i : -1;
+      const detail = c
+        ? `<button class="btn-mini" onclick="showDetail(${idx})">查看详情</button>`
+        : '';
+      return `<li class="lb-item">
+        <span class="lb-rank">${i + 1}</span>
+        <div class="lb-body">
+          <div class="lb-name">${esc(row.name)}</div>
+          <div class="lb-why">${esc(row.why)}</div>
+        </div>
+        ${detail}
+      </li>`;
+    }).join('');
+    return `<div class="lb-section">
+      <h3 class="lb-title">${esc(title)}</h3>
+      <ul class="lb-list">${items}</ul>
+    </div>`;
+  }).join('');
+  app.innerHTML = `
+    <section class="view">
+      <div class="view-head"><h2>🏆 场景榜 · 哪个卡最好</h2><button class="link" onclick="goHome()">← 首页</button></div>
+      <p class="hint">编辑基于 2026-08-15 联网调研精选，卡库内均可点开详情。权益缩水频繁，比例以银行当期公告为准。</p>
+      <div class="lb-wrap">${sections}</div>
+    </section>`;
+}
+
 /* ---------- 视图：筛选 ---------- */
-const FILTER = { banks: [], tiers: [], fee: 'all', orgs: [], kw: '', studentOnly: false, perks: [], onSaleOnly: false, perkMode: 'or', scenes: [] };
+const FILTER = { banks: [], tiers: [], fee: 'all', orgs: [], kw: '', studentOnly: false, perks: [], onSaleOnly: false, perkMode: 'or', scenes: [], regions: [] };
 
 // 卡库里实际出现的权益类目（按 PERK_ORDER 顺序，便于筛选区稳定展示）
 function perkCats() {
@@ -113,6 +177,9 @@ function renderFilter() {
           </div>
           <div class="frow"><label>仅看在售</label>
             <label class="chip"><input type="checkbox" onchange="onSale(this)" ${FILTER.onSaleOnly?'checked':''}> 隐藏待复核卡片</label>
+          </div>
+          <div class="frow"><label>发卡地区</label>
+            <div class="chips">${['大陆','香港'].map(r => `<label class="chip"><input type="checkbox" class="region-cb" value="${r}" onchange="onRegion(this)" ${FILTER.regions.includes(r)?'checked':''}> ${r==='香港'?'🇭🇰 香港 / 外卡':'大陆'}</label>`).join('')}</div>
           </div>
           <div class="frow"><label>权益类型</label>
             <div class="chips">${perkCats().map(cat => `<label class="chip"><input type="checkbox" class="perk-cb" value="${esc(cat)}" onchange="onPerk(this)" ${FILTER.perks.includes(cat)?'checked':''}> ${esc(cat)}</label>`).join('')}</div>
@@ -169,9 +236,10 @@ function addPerkFilter(cat) {
 function onFee(v){ FILTER.fee = v; applyFilter(); }
 function onStudent(el){ FILTER.studentOnly = el.checked; applyFilter(); }
 function onSale(el){ FILTER.onSaleOnly = el.checked; applyFilter(); }
+function onRegion(el){ toggleArr(FILTER.regions, el.value, el.checked); applyFilter(); }
 function onKw(el){ FILTER.kw = el.value.trim(); applyFilter(); }
 function toggleArr(a, v, on){ const i = a.indexOf(v); if(on && i<0) a.push(v); if(!on && i>=0) a.splice(i,1); }
-function resetFilter(){ FILTER.banks=[]; FILTER.tiers=[]; FILTER.orgs=[]; FILTER.fee='all'; FILTER.kw=''; FILTER.studentOnly=false; FILTER.perks=[]; FILTER.onSaleOnly=false; FILTER.scenes=[]; renderFilter(); }
+function resetFilter(){ FILTER.banks=[]; FILTER.tiers=[]; FILTER.orgs=[]; FILTER.fee='all'; FILTER.kw=''; FILTER.studentOnly=false; FILTER.perks=[]; FILTER.onSaleOnly=false; FILTER.scenes=[]; FILTER.regions=[]; renderFilter(); }
 
 function applyFilter() {
   let list = CARDS.filter(c => {
@@ -180,6 +248,7 @@ function applyFilter() {
     if (FILTER.orgs.length && !FILTER.orgs.includes(c.cardOrg)) return false;
     if (FILTER.studentOnly && !isStudentFriendly(c)) return false;
     if (FILTER.onSaleOnly && c.verifyStatus !== '✅在售') return false;
+    if (FILTER.regions.length && !FILTER.regions.includes(c.region || '大陆')) return false;
     if (FILTER.perks.length) {
       const cats = (c.perks || []).map(p => p.cat);
       const hit = FILTER.perks.filter(pc => cats.includes(pc));
@@ -221,6 +290,7 @@ function cardHTML(c) {
       </div>
       <h3 class="card-name" onclick="showDetail(${c._i})">${esc(c.cardName)}</h3>
       <div class="card-bank">${esc(c.bank)} · ${esc(c.cardOrg)}</div>
+      ${c.region && c.region !== '大陆' ? `<div class="card-region">🇭🇰 ${esc(c.region)} / 外卡</div>` : ''}
       <div class="card-line"><span>年费</span>${esc(c.annualFee)}</div>
       <div class="card-line"><span>实际成本</span>${esc(c.realCost)}</div>
       <div class="card-line"><span>核心权益</span>${esc(c.benefits)}</div>
@@ -271,7 +341,7 @@ function renderCompare() {
 }
 
 /* ---------- 完整权益清单 ---------- */
-const PERK_ORDER = ['贵宾厅','接送机','酒店会籍','健康医疗','运动健身','返现','里程积分','出行保障','生活礼遇','其他'];
+const PERK_ORDER = ['贵宾厅','接送机','酒店会籍','酒店积分','航空里程','健康医疗','运动健身','返现','平台返现','出行保障','生活礼遇','其他'];
 function renderPerks(c) {
   if (!c.perks || !c.perks.length) return '';
   const groups = {};
