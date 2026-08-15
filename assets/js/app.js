@@ -289,7 +289,7 @@ function cardHTML(c) {
         <span class="verify ${vBadge}" title="核验状态">${esc(c.verifyStatus)}</span>
       </div>
       <h3 class="card-name" onclick="showDetail(${c._i})">${esc(c.cardName)}</h3>
-      <div class="card-bank">${esc(c.bank)} · ${esc(c.cardOrg)}</div>
+      <div class="card-bank">${esc(c.bank)} · ${esc(c.cardOrg)}${c.cardOrg.includes('/') ? ' <span class="set-tag">套卡</span>' : ''}</div>
       ${c.region && c.region !== '大陆' ? `<div class="card-region">🇭🇰 ${esc(c.region)} / 外卡</div>` : ''}
       <div class="card-line"><span>年费</span>${esc(c.annualFee)}</div>
       <div class="card-line"><span>实际成本</span>${esc(c.realCost)}</div>
@@ -365,7 +365,7 @@ function showDetail(i) {
       <button class="modal-x" onclick="this.closest('.modal-mask').remove()">✕</button>
       <span class="badge ${TIERS[c.tier].cls}">${TIERS[c.tier].label}</span>
       <h2>${esc(c.cardName)}</h2>
-      <div class="card-bank">${esc(c.bank)} · ${esc(c.cardOrg)}</div>
+      <div class="card-bank">${esc(c.bank)} · ${esc(c.cardOrg)}${c.cardOrg.includes('/') ? ' <span class="set-tag">套卡</span>' : ''}</div>
       <div class="card-line"><span>年费</span>${esc(c.annualFee)}</div>
       <div class="card-line"><span>实际成本</span>${esc(c.realCost)}</div>
       <div class="card-line"><span>核心权益</span>${esc(c.benefits)}</div>
