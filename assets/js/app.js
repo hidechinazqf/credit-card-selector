@@ -281,7 +281,9 @@ function applyFilter() {
 function cardHTML(c) {
   const inCmp = compareSet.some(x => x._i === c._i);
   const vBadge = c.verifyStatus === '✅在售' ? 'ok' : (c.verifyStatus === '⚠️需更新' ? 'warn' : 'stop');
-  const pcats = uniq((c.perks || []).map(p => p.cat)).slice(0, 4);
+  const _pcats = uniq((c.perks || []).map(p => p.cat));
+  const _prio = ['贵宾厅', '接送机', '代驾', '返现', '航空里程', '酒店会籍', '酒店积分', '平台返现', '健康医疗', '运动健身', '出行保障', '生活礼遇', '其他'];
+  const pcats = _prio.filter(cat => _pcats.includes(cat)).concat(_pcats.filter(cat => !_prio.includes(cat))).slice(0, 4);
   return `
     <article class="card">
       <div class="card-top">
@@ -341,7 +343,7 @@ function renderCompare() {
 }
 
 /* ---------- 完整权益清单 ---------- */
-const PERK_ORDER = ['贵宾厅','接送机','酒店会籍','酒店积分','航空里程','健康医疗','运动健身','返现','平台返现','出行保障','生活礼遇','其他'];
+const PERK_ORDER = ['贵宾厅','接送机','代驾','酒店会籍','酒店积分','航空里程','健康医疗','运动健身','返现','平台返现','出行保障','生活礼遇','其他'];
 function renderPerks(c) {
   if (!c.perks || !c.perks.length) return '';
   const groups = {};
