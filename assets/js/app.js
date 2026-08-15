@@ -383,7 +383,7 @@ function showDetail(i) {
 }
 
 /* ---------- 视图：问卷推荐 ---------- */
-const Q = { identity: '', fee: '', usage: '', value: '', travel: '', ai: '' };
+const Q = { identity: '', fee: '', usage: '', values: [], travel: '' };
 function renderQuestionnaire() {
   const app = document.getElementById('app');
   app.innerHTML = `
@@ -393,8 +393,12 @@ function renderQuestionnaire() {
         ${qBlock('identity','你的身份？',[['student','在校学生'],['grad','毕业生 / 刚工作(≤3年)'],['emp','在职稳定'],['free','自由职业']])}
         ${qBlock('fee','年费你能接受多少？',[['0','必须免年费'],['1k','几百元可接受'],['3k','几千元换权益'],['any','不介意']])}
         ${qBlock('usage','主要用在哪？',[['cn','境内为主'],['os','境外为主'],['both','境内外都有']])}
-        ${qBlock('value','你最看重什么？',[['free','免年费省钱'],['lounge','贵宾厅 / 机场'],['cash','返现'],['mile','里程 / 积分'],['credit','攒信用起步']])}
-        ${qBlock('ai','要订阅海外 AI（ChatGPT / Grok / Claude）或海淘吗？',[['yes','是，需要外币通道'],['no','不需要']])}
+        ${qBlockMulti('values','你最看重什么？',[
+          ['free','免年费省钱'],['lounge','贵宾厅'],['transfer','接送机'],['daijia','代驾'],
+          ['cash','返现'],['mile','航空里程'],['hotelpts','酒店积分'],['platcash','腾讯/京东返现'],
+          ['health','健康医疗'],['fitness','运动健身'],['safeguard','出行保障'],['lifestyle','生活礼遇'],
+          ['overseasAI','订阅海外AI(GPT等)/海淘'],['starter','低门槛攒信用']
+        ], 3)}
         ${qBlock('travel','你出行频繁吗？',[['rare','很少'],['some','偶尔'],['often','经常']])}
         <button class="btn-primary" onclick="runRecommend()">查看推荐</button>
       </div>
@@ -405,9 +409,24 @@ function qBlock(key, title, opts) {
   return `<div class="q"><p>${title}</p><div class="chips">${opts.map(([v,l]) =>
     `<label class="chip"><input type="radio" name="${key}" value="${v}" onchange="Q.${key}='${v}'"> ${l}</label>`).join('')}</div></div>`;
 }
+// 多选（可勾选多个，最多 max 项），结果写入 Q.values
+function qBlockMulti(key, title, opts, max) {
+  return `<div class="q"><p>${title} <span class="q-hint">（最多选 ${max} 项）</span></p><div class="chips">${opts.map(([v,l]) =>
+    `<label class="chip"><input type="checkbox" name="${key}" value="${v}" onchange="toggleValue('${v}', ${max})"> ${l}</label>`).join('')}</div></div>`;
+}
+function toggleValue(v, max) {
+  const i = Q.values.indexOf(v);
+  if (i >= 0) { Q.values.splice(i, 1); return; }
+  if (Q.values.length >= max) {
+    const box = document.querySelector(`input[name="values"][value="${v}"]`);
+    if (box) box.checked = false;
+    return;
+  }
+  Q.values.push(v);
+}
 function runRecommend() {
   const rec = document.getElementById('rec');
-  if (!Q.identity || !Q.fee || !Q.usage || !Q.value || !Q.ai || !Q.travel) { rec.innerHTML = '<div class="warn">请先答完所有问题。</div>'; return; }
+  if (!Q.identity || !Q.fee || !Q.usage || !Q.values.length || !Q.travel) { rec.innerHTML = '<div class="warn">请先答完所有问题。</div>'; return; }
   const all = CARDS.map(c => scoreCard(c)).filter(x => x.pass);
   const scored = all.slice().sort((a,b) => b.score - a.score).slice(0, 3);
   if (!scored.length) { rec.innerHTML = '<div class="empty">没有特别匹配的卡，试试放宽年费或身份条件。</div>'; return; }
@@ -424,6 +443,22 @@ function runRecommend() {
   rec.innerHTML = html;
   rec.scrollIntoView({ behavior: 'smooth' });
 }
+// 问卷「看重」维度评分规则：命中即 +18，reason 展示给用户
+const VALUE_RULES = {
+  free:      [(c) => costNum(c) === 0, '年费成本为 0'],
+  lounge:    [(c, b) => /贵宾厅|龙腾|cip|机场/.test(b), '含贵宾厅权益'],
+  transfer:  [(c, b) => /接送|礼宾车|高铁站/.test(b), '含接送机权益'],
+  daijia:    [(c, b) => (c.perks || []).some(p => p.cat === '代驾') || /代驾/.test(b), '含代驾权益'],
+  cash:      [(c, b) => /返现/.test(b), '有返现'],
+  mile:      [(c, b) => /里程|万豪|希尔顿|积分/.test(b), '适合攒里程 / 积分'],
+  hotelpts:  [(c, b) => /酒店积分|酒店会籍|万豪|希尔顿/.test(b), '含酒店积分 / 会籍'],
+  platcash:  [(c, b) => /腾讯|京东|平台返现|刷卡金/.test(b), '含腾讯 / 京东等平台返现'],
+  health:    [(c, b) => /医疗|洁牙|陪诊|挂号|健康/.test(b), '含健康医疗权益'],
+  fitness:   [(c, b) => /健身|滑雪|马术|运动/.test(b), '含运动健身权益'],
+  safeguard: [(c, b) => /延误险|意外险|救援|保障|道路救援/.test(b), '含出行保障'],
+  lifestyle: [(c, b) => /生活礼遇|视频|星巴克|礼遇/.test(b), '含生活礼遇'],
+  starter:   [(c) => c.tier <= 1, '低门槛，适合起步攒信用'],
+};
 function scoreCard(c) {
   let score = 0; const reasons = []; const cost = costNum(c);
   // 年费硬门槛
@@ -441,21 +476,20 @@ function scoreCard(c) {
     if (c.tier >= 2) { score += 10; }
   }
   // 用途
-  const b = (c.benefits + c.cardName).toLowerCase();
+  const b = (c.benefits + ' ' + c.cardName + ' ' + (c.perks || []).map(p => p.cat + ' ' + p.text).join(' ')).toLowerCase();
   if (Q.usage === 'cn' && /境内|银联/.test(c.benefits + c.cardOrg)) { score += 12; reasons.push('境内使用友好'); }
   if (Q.usage === 'os' && /境外|visa|运通|万事达|龙腾|环球|货币/.test(b + c.cardOrg)) { score += 14; reasons.push('境外 / 出行权益强'); }
   if (Q.usage === 'both') { score += 8; reasons.push('境内外通用'); }
-  // 海外 AI 订阅 / 海淘：明确需要外币通道时，优先推支持卡、剔除不支持的
-  if (Q.ai === 'yes') {
+  // 海外 AI 订阅 / 海淘：勾选即视为硬需求，仅保留支持外币通道的卡
+  if (Q.values.includes('overseasAI')) {
     if ((c.scenes || []).includes('海外AI订阅')) { score += 22; reasons.push('支持订阅海外 AI / 外币在线支付'); }
     else { return { pass: false }; }
   }
-  // 看重点
-  if (Q.value === 'free' && cost === 0) { score += 18; reasons.push('年费成本为 0'); }
-  if (Q.value === 'lounge' && /贵宾厅|龙腾|cip|接送|机场/.test(b)) { score += 18; reasons.push('含贵宾厅 / 接送机权益'); }
-  if (Q.value === 'cash' && /返现/.test(b)) { score += 18; reasons.push('有返现'); }
-  if (Q.value === 'mile' && /里程|万豪|积分|希尔顿/.test(b)) { score += 18; reasons.push('适合攒里程 / 积分'); }
-  if (Q.value === 'credit' && c.tier === 1) { score += 18; reasons.push('低门槛，适合起步攒信用'); }
+  // 看重点（可多选，每项命中 +18）
+  Q.values.forEach(v => {
+    const rule = VALUE_RULES[v];
+    if (rule && rule[0](c, b)) { score += 18; reasons.push(rule[1]); }
+  });
   // 出行频率
   if (Q.travel === 'often' && /贵宾厅|接送|龙腾/.test(b)) score += 8;
   if (Q.travel === 'rare' && cost === 0) score += 6;
@@ -464,26 +498,27 @@ function scoreCard(c) {
 }
 
 // 用户勾选的需求维度（用于组合互补判断）
-const DIM_LABEL = { free: '免年费', lounge: '贵宾厅/接送', cash: '返现', mile: '里程/积分', overseas: '海外消费', starter: '低门槛起步' };
+const DIM_LABEL = { free: '免年费', lounge: '贵宾厅', transfer: '接送机', daijia: '代驾', cash: '返现', mile: '里程/积分', hotelpts: '酒店积分', platcash: '平台返现', health: '健康医疗', fitness: '运动健身', safeguard: '出行保障', lifestyle: '生活礼遇', overseasAI: '海外AI/海淘', starter: '低门槛起步' };
 function userDims() {
-  const d = new Set();
-  if (Q.fee === '0') d.add('free');
-  if (Q.value === 'lounge' || Q.travel !== 'rare') d.add('lounge');
-  if (Q.value === 'cash') d.add('cash');
-  if (Q.value === 'mile') d.add('mile');
-  if (Q.ai === 'yes' || Q.usage === 'os' || Q.usage === 'both') d.add('overseas');
-  if (Q.identity === 'student' || Q.identity === 'grad' || Q.value === 'credit') d.add('starter');
-  return d;
+  return new Set(Q.values);
 }
 // 卡片自身覆盖的维度
 function cardDims(c) {
-  const b = (c.benefits + ' ' + (c.perks || []).map(p => p.text).join(' ')).toLowerCase();
+  const b = (c.benefits + ' ' + (c.perks || []).map(p => p.cat + ' ' + p.text).join(' ')).toLowerCase();
   const d = new Set();
   if (costNum(c) === 0) d.add('free');
-  if (/贵宾厅|龙腾|接送|机场|cip/.test(b)) d.add('lounge');
+  if (/贵宾厅|龙腾|cip|机场/.test(b)) d.add('lounge');
+  if (/接送|礼宾车|高铁站/.test(b)) d.add('transfer');
+  if ((c.perks || []).some(p => p.cat === '代驾') || /代驾/.test(b)) d.add('daijia');
   if (/返现/.test(b)) d.add('cash');
-  if (/里程|积分|万豪|希尔顿/.test(b)) d.add('mile');
-  if ((c.scenes || []).includes('海外AI订阅') || /境外|外币|货币转换|visa|运通|万事达/.test(b)) d.add('overseas');
+  if (/里程|万豪|希尔顿|积分/.test(b)) d.add('mile');
+  if (/酒店积分|酒店会籍|万豪|希尔顿/.test(b)) d.add('hotelpts');
+  if (/腾讯|京东|平台返现|刷卡金/.test(b)) d.add('platcash');
+  if (/医疗|洁牙|陪诊|挂号|健康/.test(b)) d.add('health');
+  if (/健身|滑雪|马术|运动/.test(b)) d.add('fitness');
+  if (/延误险|意外险|救援|保障|道路救援/.test(b)) d.add('safeguard');
+  if (/生活礼遇|视频|星巴克|礼遇/.test(b)) d.add('lifestyle');
+  if ((c.scenes || []).includes('海外AI订阅') || /境外|外币|货币转换|visa|运通|万事达/.test(b)) d.add('overseasAI');
   if (c.tier <= 1) d.add('starter');
   return d;
 }

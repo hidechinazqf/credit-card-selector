@@ -116,6 +116,7 @@ table.cmp tbody th { background: #fafbfc; width: 90px; color: var(--sub); }
 .quiz { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 18px; }
 .q { margin-bottom: 16px; }
 .q > p { font-weight: 600; margin: 0 0 8px; }
+.q-hint { font-weight: 400; font-size: 12px; color: var(--sub); }
 .btn-primary { background: var(--brand); color: #fff; border: none; border-radius: 10px; padding: 12px 20px; cursor: pointer; font: inherit; font-weight: 600; width: 100%; }
 .btn-primary:hover { background: var(--brand-d); }
 .rec-h { margin-top: 22px; }
