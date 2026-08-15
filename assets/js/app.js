@@ -68,7 +68,7 @@ function goHome() {
 }
 
 /* ---------- 视图：筛选 ---------- */
-const FILTER = { banks: [], tiers: [], fee: 'all', orgs: [], kw: '', studentOnly: false, perks: [], onSaleOnly: false, perkMode: 'or' };
+const FILTER = { banks: [], tiers: [], fee: 'all', orgs: [], kw: '', studentOnly: false, perks: [], onSaleOnly: false, perkMode: 'or', scenes: [] };
 
 // 卡库里实际出现的权益类目（按 PERK_ORDER 顺序，便于筛选区稳定展示）
 function perkCats() {
@@ -76,6 +76,13 @@ function perkCats() {
   CARDS.forEach(c => (c.perks || []).forEach(p => present.add(p.cat)));
   return PERK_ORDER.filter(cat => present.has(cat))
     .concat([...present].filter(cat => !PERK_ORDER.includes(cat)));
+}
+
+// 卡库里实际出现的使用场景（动态生成，便于筛选区稳定展示）
+function sceneList() {
+  const present = new Set();
+  CARDS.forEach(c => (c.scenes || []).forEach(s => present.add(s)));
+  return [...present];
 }
 
 function renderFilter() {
@@ -114,6 +121,9 @@ function renderFilter() {
               <label class="chip"><input type="radio" name="perkMode" value="and" ${FILTER.perkMode==='and'?'checked':''} onchange="onPerkMode('and')"> 满足全部</label>
             </div>
           </div>
+          <div class="frow"><label>使用场景</label>
+            <div class="chips">${sceneList().map(s => `<label class="chip"><input type="checkbox" class="scene-cb" value="${esc(s)}" onchange="onScene(this)" ${FILTER.scenes.includes(s)?'checked':''}> ${esc(s)}</label>`).join('')}</div>
+          </div>
           <div class="frow"><label>关键词（权益/卡名）</label>
             <input type="text" id="kw" placeholder="如：贵宾厅 / 返现 / 里程" value="${esc(FILTER.kw)}" oninput="onKw(this)">
           </div>
@@ -140,6 +150,14 @@ function onTier(el){ toggleArr(FILTER.tiers, +el.value, el.checked); applyFilter
 function onBank(el){ toggleArr(FILTER.banks, el.value, el.checked); applyFilter(); }
 function onOrg(el){ toggleArr(FILTER.orgs, el.value, el.checked); applyFilter(); }
 function onPerk(el){ toggleArr(FILTER.perks, el.value, el.checked); applyFilter(); }
+function onScene(el){ toggleArr(FILTER.scenes, el.value, el.checked); applyFilter(); }
+// 点击卡片正面使用场景标签：把该场景加入筛选并同步勾选框
+function addSceneFilter(s) {
+  if (!FILTER.scenes.includes(s)) FILTER.scenes.push(s);
+  const cb = document.querySelector('.filters input.scene-cb[value="' + s.replace(/"/g, '\\"') + '"]');
+  if (cb) cb.checked = true;
+  applyFilter();
+}
 function onPerkMode(v){ FILTER.perkMode = v; applyFilter(); }
 // 点击卡片正面权益标签：把该类目加入筛选并同步勾选框
 function addPerkFilter(cat) {
@@ -153,7 +171,7 @@ function onStudent(el){ FILTER.studentOnly = el.checked; applyFilter(); }
 function onSale(el){ FILTER.onSaleOnly = el.checked; applyFilter(); }
 function onKw(el){ FILTER.kw = el.value.trim(); applyFilter(); }
 function toggleArr(a, v, on){ const i = a.indexOf(v); if(on && i<0) a.push(v); if(!on && i>=0) a.splice(i,1); }
-function resetFilter(){ FILTER.banks=[]; FILTER.tiers=[]; FILTER.orgs=[]; FILTER.fee='all'; FILTER.kw=''; FILTER.studentOnly=false; FILTER.perks=[]; FILTER.onSaleOnly=false; renderFilter(); }
+function resetFilter(){ FILTER.banks=[]; FILTER.tiers=[]; FILTER.orgs=[]; FILTER.fee='all'; FILTER.kw=''; FILTER.studentOnly=false; FILTER.perks=[]; FILTER.onSaleOnly=false; FILTER.scenes=[]; renderFilter(); }
 
 function applyFilter() {
   let list = CARDS.filter(c => {
@@ -167,6 +185,10 @@ function applyFilter() {
       const hit = FILTER.perks.filter(pc => cats.includes(pc));
       if (FILTER.perkMode === 'and' ? hit.length < FILTER.perks.length : hit.length === 0) return false;
     }
+    if (FILTER.scenes.length) {
+      const sc = (c.scenes || []);
+      if (!FILTER.scenes.some(s => sc.includes(s))) return false;
+    }
     if (FILTER.fee !== 'all') {
       const cost = costNum(c);
       if (FILTER.fee === '0' && cost > 0) return false;
@@ -174,7 +196,7 @@ function applyFilter() {
       if (FILTER.fee === '3000' && cost > 3000) return false;
     }
     if (FILTER.kw) {
-      const hay = (c.cardName + ' ' + c.benefits + ' ' + c.bank + ' ' + (c.perks || []).map(p => p.text).join(' ')).toLowerCase();
+      const hay = (c.cardName + ' ' + c.benefits + ' ' + c.bank + ' ' + (c.perks || []).map(p => p.text).join(' ') + ' ' + (c.scenes || []).join(' ')).toLowerCase();
       if (!hay.includes(FILTER.kw.toLowerCase())) return false;
     }
     return true;
@@ -204,6 +226,7 @@ function cardHTML(c) {
       <div class="card-line"><span>核心权益</span>${esc(c.benefits)}</div>
       <div class="card-line"><span>办卡门槛</span>${esc(c.eligibility)}</div>
       ${pcats.length ? `<div class="card-perks">${pcats.map(cat => `<span class="pc" title="按「${esc(cat)}」筛选" onclick="addPerkFilter('${esc(cat)}')">${esc(cat)}</span>`).join('')}</div>` : ''}
+      ${(c.scenes || []).length ? `<div class="card-scenes">${c.scenes.map(s => `<span class="sc" title="按使用场景筛选" onclick="addSceneFilter('${esc(s)}')">🤖 ${esc(s)}</span>`).join('')}</div>` : ''}
       ${c.note ? `<div class="card-note">📌 ${esc(c.note)}</div>` : ''}
       <div class="card-actions">
         <button class="btn-mini ${inCmp?'on':''}" onclick="toggleCompare(${c._i})">${inCmp?'✓ 已加入对比':'+ 加入对比'}</button>
@@ -276,6 +299,7 @@ function showDetail(i) {
       <div class="card-line"><span>年费</span>${esc(c.annualFee)}</div>
       <div class="card-line"><span>实际成本</span>${esc(c.realCost)}</div>
       <div class="card-line"><span>核心权益</span>${esc(c.benefits)}</div>
+      ${(c.scenes || []).includes('海外AI订阅') ? `<div class="scene-tip">🤖 <b>可用于海外订阅 ChatGPT / Grok / Claude / Gemini 等</b>：需为 Visa / Mastercard / 运通（单标或双标）外币卡，并在银行 App 开通「境外无卡支付」。纯银联单标卡（62 开头）通常无法订阅；运通卡建议先用小额测试，成功率略低于 Visa / Mastercard。</div>` : ''}
       <div class="perk-wrap"><div class="perk-title">完整权益清单</div>${renderPerks(c)}</div>
       <div class="card-line"><span>办卡门槛</span>${esc(c.eligibility)}</div>
       <div class="card-line"><span>核验状态</span><span class="verify ${v}">${esc(c.verifyStatus)}</span> <small>（${esc(c.verifyDate)}）</small></div>

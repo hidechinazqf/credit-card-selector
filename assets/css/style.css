@@ -78,6 +78,11 @@ body {
 .card-perks { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
 .pc { font-size: 11px; color: var(--brand-d); background: #eef2ff; padding: 2px 8px; border-radius: 999px; cursor: pointer; transition: .12s; }
 .pc:hover { background: var(--brand); color: #fff; }
+.card-scenes { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+.sc { font-size: 11px; color: #b45309; background: #fff8ec; border: 1px solid #fde68a; padding: 2px 8px; border-radius: 999px; cursor: pointer; transition: .12s; }
+.sc:hover { background: #fde68a; }
+.scene-tip { font-size: 12px; color: #92400e; background: #fffbeb; border: 1px solid #fde68a; padding: 9px 11px; border-radius: 8px; margin: 8px 0; line-height: 1.55; }
+.scene-tip b { color: #b45309; }
 .mode { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 12px; color: var(--sub); flex-wrap: wrap; }
 .mode .chip { background: #f1f3f5; }
 .card-actions { margin-top: auto; padding-top: 10px; }
