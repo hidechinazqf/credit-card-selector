@@ -63,7 +63,7 @@ function goHome() {
           <div class="entry-d">回答几个问题，帮你选出合适的</div>
         </button>
       </div>
-      <p class="hint">当前卡库共 ${CARDS.length} 张，覆盖四档：从学生低门槛到高端刚性年费。</p>
+      <p class="hint">当前卡库共 ${CARDS.length} 张（${CARDS.filter(c => c.verifyStatus === '✅在售').length} 在售 / ${CARDS.filter(c => c.verifyStatus !== '✅在售').length} 待复核），覆盖四档：从学生低门槛到高端刚性年费。数据由社区维护，初始于 2026-08-15 经联网核验，权益请以银行官方为准。</p>
     </section>`;
 }
 
