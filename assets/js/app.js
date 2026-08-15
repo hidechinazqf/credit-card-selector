@@ -67,7 +67,15 @@ function goHome() {
 }
 
 /* ---------- 视图：筛选 ---------- */
-const FILTER = { banks: [], tiers: [], fee: 'all', orgs: [], kw: '', studentOnly: false };
+const FILTER = { banks: [], tiers: [], fee: 'all', orgs: [], kw: '', studentOnly: false, perks: [] };
+
+// 卡库里实际出现的权益类目（按 PERK_ORDER 顺序，便于筛选区稳定展示）
+function perkCats() {
+  const present = new Set();
+  CARDS.forEach(c => (c.perks || []).forEach(p => present.add(p.cat)));
+  return PERK_ORDER.filter(cat => present.has(cat))
+    .concat([...present].filter(cat => !PERK_ORDER.includes(cat)));
+}
 
 function renderFilter() {
   const banks = uniq(CARDS.map(c => c.bank)).sort();
@@ -95,6 +103,9 @@ function renderFilter() {
           <div class="frow"><label>仅看学生可办</label>
             <label class="chip"><input type="checkbox" onchange="onStudent(this)" ${FILTER.studentOnly?'checked':''}> 在校生 / 毕业不久也能办</label>
           </div>
+          <div class="frow"><label>权益类型（含其一即可）</label>
+            <div class="chips">${perkCats().map(cat => `<label class="chip"><input type="checkbox" value="${esc(cat)}" onchange="onPerk(this)" ${FILTER.perks.includes(cat)?'checked':''}> ${esc(cat)}</label>`).join('')}</div>
+          </div>
           <div class="frow"><label>关键词（权益/卡名）</label>
             <input type="text" id="kw" placeholder="如：贵宾厅 / 返现 / 里程" value="${esc(FILTER.kw)}" oninput="onKw(this)">
           </div>
@@ -120,11 +131,12 @@ function renderFilter() {
 function onTier(el){ toggleArr(FILTER.tiers, +el.value, el.checked); applyFilter(); }
 function onBank(el){ toggleArr(FILTER.banks, el.value, el.checked); applyFilter(); }
 function onOrg(el){ toggleArr(FILTER.orgs, el.value, el.checked); applyFilter(); }
+function onPerk(el){ toggleArr(FILTER.perks, el.value, el.checked); applyFilter(); }
 function onFee(v){ FILTER.fee = v; applyFilter(); }
 function onStudent(el){ FILTER.studentOnly = el.checked; applyFilter(); }
 function onKw(el){ FILTER.kw = el.value.trim(); applyFilter(); }
 function toggleArr(a, v, on){ const i = a.indexOf(v); if(on && i<0) a.push(v); if(!on && i>=0) a.splice(i,1); }
-function resetFilter(){ FILTER.banks=[]; FILTER.tiers=[]; FILTER.orgs=[]; FILTER.fee='all'; FILTER.kw=''; FILTER.studentOnly=false; renderFilter(); }
+function resetFilter(){ FILTER.banks=[]; FILTER.tiers=[]; FILTER.orgs=[]; FILTER.fee='all'; FILTER.kw=''; FILTER.studentOnly=false; FILTER.perks=[]; renderFilter(); }
 
 function applyFilter() {
   let list = CARDS.filter(c => {
@@ -132,6 +144,10 @@ function applyFilter() {
     if (FILTER.banks.length && !FILTER.banks.includes(c.bank)) return false;
     if (FILTER.orgs.length && !FILTER.orgs.includes(c.cardOrg)) return false;
     if (FILTER.studentOnly && !isStudentFriendly(c)) return false;
+    if (FILTER.perks.length) {
+      const cats = (c.perks || []).map(p => p.cat);
+      if (!FILTER.perks.some(pc => cats.includes(pc))) return false;
+    }
     if (FILTER.fee !== 'all') {
       const cost = costNum(c);
       if (FILTER.fee === '0' && cost > 0) return false;
