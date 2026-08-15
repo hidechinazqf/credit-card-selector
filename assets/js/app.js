@@ -336,9 +336,10 @@ function qBlock(key, title, opts) {
 function runRecommend() {
   const rec = document.getElementById('rec');
   if (!Q.identity || !Q.fee || !Q.usage || !Q.value || !Q.ai || !Q.travel) { rec.innerHTML = '<div class="warn">请先答完所有问题。</div>'; return; }
-  const scored = CARDS.map(c => scoreCard(c)).filter(x => x.pass).sort((a,b) => b.score - a.score).slice(0, 3);
+  const all = CARDS.map(c => scoreCard(c)).filter(x => x.pass);
+  const scored = all.slice().sort((a,b) => b.score - a.score).slice(0, 3);
   if (!scored.length) { rec.innerHTML = '<div class="empty">没有特别匹配的卡，试试放宽年费或身份条件。</div>'; return; }
-  rec.innerHTML = `<h3 class="rec-h">为你推荐的 ${scored.length} 张</h3>` + scored.map(s => `
+  let html = `<h3 class="rec-h">为你推荐的 ${scored.length} 张</h3>` + scored.map(s => `
     <div class="rec-card">
       <div class="rec-top"><span class="badge ${TIERS[s.c.tier].cls}">${TIERS[s.c.tier].label}</span><b>${esc(s.c.cardName)}</b><span class="card-bank">${esc(s.c.bank)}</span></div>
       <div class="card-line"><span>年费</span>${esc(s.c.annualFee)}　<span>成本</span>${esc(s.c.realCost)}</div>
@@ -346,6 +347,9 @@ function runRecommend() {
       <ul class="reasons">${s.reasons.map(r => `<li>${esc(r)}</li>`).join('')}</ul>
       <button class="btn-mini" onclick="showDetail(${s.c._i})">查看详情</button>
     </div>`).join('');
+  const combo = buildCombo(all);
+  if (combo) html += renderCombo(combo);
+  rec.innerHTML = html;
   rec.scrollIntoView({ behavior: 'smooth' });
 }
 function scoreCard(c) {
@@ -385,6 +389,71 @@ function scoreCard(c) {
   if (Q.travel === 'rare' && cost === 0) score += 6;
   if (!reasons.length) reasons.push('综合条件较均衡，可作备选');
   return { pass: true, c, score, reasons };
+}
+
+// 用户勾选的需求维度（用于组合互补判断）
+const DIM_LABEL = { free: '免年费', lounge: '贵宾厅/接送', cash: '返现', mile: '里程/积分', overseas: '海外消费', starter: '低门槛起步' };
+function userDims() {
+  const d = new Set();
+  if (Q.fee === '0') d.add('free');
+  if (Q.value === 'lounge' || Q.travel !== 'rare') d.add('lounge');
+  if (Q.value === 'cash') d.add('cash');
+  if (Q.value === 'mile') d.add('mile');
+  if (Q.ai === 'yes' || Q.usage === 'os' || Q.usage === 'both') d.add('overseas');
+  if (Q.identity === 'student' || Q.identity === 'grad' || Q.value === 'credit') d.add('starter');
+  return d;
+}
+// 卡片自身覆盖的维度
+function cardDims(c) {
+  const b = (c.benefits + ' ' + (c.perks || []).map(p => p.text).join(' ')).toLowerCase();
+  const d = new Set();
+  if (costNum(c) === 0) d.add('free');
+  if (/贵宾厅|龙腾|接送|机场|cip/.test(b)) d.add('lounge');
+  if (/返现/.test(b)) d.add('cash');
+  if (/里程|积分|万豪|希尔顿/.test(b)) d.add('mile');
+  if ((c.scenes || []).includes('海外AI订阅') || /境外|外币|货币转换|visa|运通|万事达/.test(b)) d.add('overseas');
+  if (c.tier <= 1) d.add('starter');
+  return d;
+}
+// 组合：选 2 张互补卡，覆盖用户更多需求维度
+function buildCombo(scored) {
+  if (scored.length < 2) return null;
+  const A = scored.slice().sort((x, y) => y.score - x.score)[0];
+  const A_dims = cardDims(A.c);
+  const ud = userDims();
+  let best = null, bestGain = 0;
+  for (const s of scored) {
+    if (s.c === A.c) continue;
+    const d = cardDims(s.c);
+    let gain = 0;
+    ud.forEach(k => { if (d.has(k) && !A_dims.has(k)) gain++; });
+    if (s.c.bank === A.c.bank) gain -= 0.5; // 轻微偏好跨行
+    if (gain > bestGain) { bestGain = gain; best = s; }
+  }
+  if (!best || bestGain <= 0) return null; // 单卡已够覆盖就不硬凑
+  return [A, best];
+}
+function renderCombo([a, b]) {
+  const da = cardDims(a.c), db = cardDims(b.c), ud = userDims();
+  const label = k => DIM_LABEL[k] || k;
+  const aCovered = [...ud].filter(k => da.has(k)).map(label);
+  const bCovered = [...ud].filter(k => db.has(k)).map(label);
+  const newBy = [...ud].filter(k => db.has(k) && !da.has(k)).map(label);
+  const mini = (s, role, covered) => `
+    <div class="combo-card">
+      <div class="rec-top"><span class="badge ${TIERS[s.c.tier].cls}">${TIERS[s.c.tier].label}</span><b>${esc(s.c.cardName)}</b><span class="card-bank">${esc(s.c.bank)}</span></div>
+      <div class="card-line"><span>年费</span>${esc(s.c.annualFee)}　<span>成本</span>${esc(s.c.realCost)}</div>
+      <div class="card-perks">${([...cardDims(s.c)].filter(k => DIM_LABEL[k]).map(k => `<span class="pc">${label(k)}</span>`)).join('')}</div>
+      <div class="combo-role">${role}：${covered.join('、') || '通用消费'}</div>
+      <button class="btn-mini" onclick="showDetail(${s.c._i})">查看详情</button>
+    </div>`;
+  const coverAll = [...new Set([...aCovered, ...bCovered])];
+  return `<div class="combo">
+    <h3 class="rec-h">💡 组合方案：2 张搭配更省心</h3>
+    <p class="combo-desc">日常消费用「主力卡」无脑刷，出行 / 贵宾厅 / 海外等场景用「权益卡」补位，两张互补覆盖你更多需求。</p>
+    <div class="combo-row">${mini(a, '日常主力', aCovered)}${mini(b, '权益补充', newBy.length ? newBy : bCovered)}</div>
+    <div class="combo-note">✅ 组合覆盖：${coverAll.join('、')}</div>
+  </div>`;
 }
 
 /* ---------- 启动 ---------- */
