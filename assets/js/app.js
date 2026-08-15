@@ -68,7 +68,7 @@ function goHome() {
 }
 
 /* ---------- 视图：筛选 ---------- */
-const FILTER = { banks: [], tiers: [], fee: 'all', orgs: [], kw: '', studentOnly: false, perks: [], onSaleOnly: false };
+const FILTER = { banks: [], tiers: [], fee: 'all', orgs: [], kw: '', studentOnly: false, perks: [], onSaleOnly: false, perkMode: 'or' };
 
 // 卡库里实际出现的权益类目（按 PERK_ORDER 顺序，便于筛选区稳定展示）
 function perkCats() {
@@ -107,8 +107,12 @@ function renderFilter() {
           <div class="frow"><label>仅看在售</label>
             <label class="chip"><input type="checkbox" onchange="onSale(this)" ${FILTER.onSaleOnly?'checked':''}> 隐藏待复核卡片</label>
           </div>
-          <div class="frow"><label>权益类型（含其一即可）</label>
-            <div class="chips">${perkCats().map(cat => `<label class="chip"><input type="checkbox" value="${esc(cat)}" onchange="onPerk(this)" ${FILTER.perks.includes(cat)?'checked':''}> ${esc(cat)}</label>`).join('')}</div>
+          <div class="frow"><label>权益类型</label>
+            <div class="chips">${perkCats().map(cat => `<label class="chip"><input type="checkbox" class="perk-cb" value="${esc(cat)}" onchange="onPerk(this)" ${FILTER.perks.includes(cat)?'checked':''}> ${esc(cat)}</label>`).join('')}</div>
+            <div class="mode"><span>匹配</span>
+              <label class="chip"><input type="radio" name="perkMode" value="or" ${FILTER.perkMode==='or'?'checked':''} onchange="onPerkMode('or')"> 满足其一</label>
+              <label class="chip"><input type="radio" name="perkMode" value="and" ${FILTER.perkMode==='and'?'checked':''} onchange="onPerkMode('and')"> 满足全部</label>
+            </div>
           </div>
           <div class="frow"><label>关键词（权益/卡名）</label>
             <input type="text" id="kw" placeholder="如：贵宾厅 / 返现 / 里程" value="${esc(FILTER.kw)}" oninput="onKw(this)">
@@ -136,6 +140,14 @@ function onTier(el){ toggleArr(FILTER.tiers, +el.value, el.checked); applyFilter
 function onBank(el){ toggleArr(FILTER.banks, el.value, el.checked); applyFilter(); }
 function onOrg(el){ toggleArr(FILTER.orgs, el.value, el.checked); applyFilter(); }
 function onPerk(el){ toggleArr(FILTER.perks, el.value, el.checked); applyFilter(); }
+function onPerkMode(v){ FILTER.perkMode = v; applyFilter(); }
+// 点击卡片正面权益标签：把该类目加入筛选并同步勾选框
+function addPerkFilter(cat) {
+  if (!FILTER.perks.includes(cat)) FILTER.perks.push(cat);
+  const cb = document.querySelector('.filters input.perk-cb[value="' + cat.replace(/"/g, '\\"') + '"]');
+  if (cb) cb.checked = true;
+  applyFilter();
+}
 function onFee(v){ FILTER.fee = v; applyFilter(); }
 function onStudent(el){ FILTER.studentOnly = el.checked; applyFilter(); }
 function onSale(el){ FILTER.onSaleOnly = el.checked; applyFilter(); }
@@ -152,7 +164,8 @@ function applyFilter() {
     if (FILTER.onSaleOnly && c.verifyStatus !== '✅在售') return false;
     if (FILTER.perks.length) {
       const cats = (c.perks || []).map(p => p.cat);
-      if (!FILTER.perks.some(pc => cats.includes(pc))) return false;
+      const hit = FILTER.perks.filter(pc => cats.includes(pc));
+      if (FILTER.perkMode === 'and' ? hit.length < FILTER.perks.length : hit.length === 0) return false;
     }
     if (FILTER.fee !== 'all') {
       const cost = costNum(c);
@@ -190,7 +203,7 @@ function cardHTML(c) {
       <div class="card-line"><span>实际成本</span>${esc(c.realCost)}</div>
       <div class="card-line"><span>核心权益</span>${esc(c.benefits)}</div>
       <div class="card-line"><span>办卡门槛</span>${esc(c.eligibility)}</div>
-      ${pcats.length ? `<div class="card-perks">${pcats.map(cat => `<span class="pc">${esc(cat)}</span>`).join('')}</div>` : ''}
+      ${pcats.length ? `<div class="card-perks">${pcats.map(cat => `<span class="pc" title="按「${esc(cat)}」筛选" onclick="addPerkFilter('${esc(cat)}')">${esc(cat)}</span>`).join('')}</div>` : ''}
       ${c.note ? `<div class="card-note">📌 ${esc(c.note)}</div>` : ''}
       <div class="card-actions">
         <button class="btn-mini ${inCmp?'on':''}" onclick="toggleCompare(${c._i})">${inCmp?'✓ 已加入对比':'+ 加入对比'}</button>
