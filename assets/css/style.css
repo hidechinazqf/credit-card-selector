@@ -167,6 +167,13 @@ table.cmp tbody th { background: #fafbfc; width: 90px; color: var(--sub); }
 .be-card { background: #fff; border: 1px solid #a7f3d0; border-radius: 8px; padding: 12px 14px; margin: 8px 0; cursor: pointer; font-weight: 600; color: #0f172a; }
 .be-card:hover { background: #f0fdf4; }
 .bin-cand .bc-t { font-weight: 600; color: #334155; margin: 12px 0 4px; }
+.bin-feedback { background: #f8fafc; border: 1.5px dashed #cbd5e1; border-radius: 12px; padding: 16px 18px; margin: 22px 0 8px; }
+.bf-t { font-weight: 700; color: #0f172a; font-size: 17px; }
+.bf-d { font-size: 13px; color: #64748b; margin: 8px 0 12px; line-height: 1.6; }
+.bf-d b { color: #334155; }
+.bin-feedback textarea { width: 100%; box-sizing: border-box; padding: 12px 14px; font-size: 15px; border: 1.5px solid #cbd5e1; border-radius: 10px; resize: vertical; font-family: inherit; }
+.bin-feedback textarea:focus { outline: none; border-color: #0f172a; }
+.bf-btns { display: flex; gap: 14px; align-items: center; margin-top: 12px; flex-wrap: wrap; }
 
 /* responsive */
 @media (max-width: 720px) {
