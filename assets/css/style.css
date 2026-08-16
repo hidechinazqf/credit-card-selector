@@ -152,6 +152,22 @@ table.cmp tbody th { background: #fafbfc; width: 90px; color: var(--sub); }
 .warn code, .empty code { background: #fff; padding: 1px 5px; border-radius: 4px; }
 .empty { text-align: center; color: var(--sub); padding: 40px 0; }
 
+/* 查卡 BIN */
+.bin-lookup { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px; padding: 22px 24px; margin: 26px 0; }
+.bl-t { font-size: 20px; font-weight: 700; color: #0f172a; }
+.bl-d { font-size: 15px; color: #475569; margin: 8px 0 16px; }
+.bl-row { display: flex; gap: 12px; flex-wrap: wrap; }
+.bl-row input { flex: 1; min-width: 220px; padding: 14px 16px; font-size: 18px; border: 1.5px solid #cbd5e1; border-radius: 10px; letter-spacing: 2px; }
+.bl-row input:focus { outline: none; border-color: #0f172a; }
+.btn-primary { background: #0f172a; color: #fff; border: none; border-radius: 10px; padding: 14px 24px; font-size: 16px; font-weight: 700; cursor: pointer; }
+.btn-primary:hover { opacity: .9; }
+.bl-note { font-size: 12px; color: #94a3b8; margin-top: 12px; }
+.bin-exact { background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 12px; padding: 14px 16px; margin: 18px 0; }
+.be-t { font-weight: 700; color: #065f46; margin-bottom: 10px; }
+.be-card { background: #fff; border: 1px solid #a7f3d0; border-radius: 8px; padding: 12px 14px; margin: 8px 0; cursor: pointer; font-weight: 600; color: #0f172a; }
+.be-card:hover { background: #f0fdf4; }
+.bin-cand .bc-t { font-weight: 600; color: #334155; margin: 12px 0 4px; }
+
 /* responsive */
 @media (max-width: 720px) {
   .entries, .list { grid-template-columns: 1fr; }
