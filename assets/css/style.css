@@ -152,7 +152,7 @@ table.cmp tbody th { background: #fafbfc; width: 90px; color: var(--sub); }
 .warn code, .empty code { background: #fff; padding: 1px 5px; border-radius: 4px; }
 .empty { text-align: center; color: var(--sub); padding: 40px 0; }
 
-/* 查卡 BIN（已移除，保留共用按钮样式） */
+/* 共用主按钮 */
 .btn-primary { background: #0f172a; color: #fff; border: none; border-radius: 10px; padding: 14px 24px; font-size: 16px; font-weight: 700; cursor: pointer; }
 .btn-primary:hover { opacity: .9; }
 
