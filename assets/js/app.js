@@ -71,98 +71,6 @@ async function boot() {
   goHome();
 }
 
-/* ---------- 查卡 BIN（识别卡组织，展示同组织候选卡） ---------- */
-function binLookupHTML() {
-  return `<div class="bin-lookup">
-    <div class="bl-t">🔢 已经有卡了？查查它有什么权益</div>
-    <div class="bl-d">输入卡号前 6 位，识别卡组织，看同组织的卡有哪些权益、值不值得留 / 换。</div>
-    <div class="bl-row">
-      <input type="text" id="binInput" inputmode="numeric" maxlength="19" autocomplete="off" placeholder="如 6225 88 / 4392 25 / 5187 18" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
-      <button class="btn-primary" onclick="lookupBin()">查我的卡</button>
-    </div>
-    <div class="bl-note">仅识别卡组织、展示权益，不做任何卡验证；数据以银行公示为准。</div>
-  </div>`;
-}
-// 卡号前 6-8 位 → 卡组织（银联/Visa/万事达/运通，命中率 100%）
-function detectOrg(pan) {
-  if (/^4/.test(pan)) return { key: 'Visa', label: 'Visa' };
-  if (/^(5[1-5]|2[2-7])/.test(pan)) return { key: '万事达', label: 'Mastercard' };
-  if (/^3[47]/.test(pan)) return { key: '运通', label: 'American Express' };
-  if (/^62/.test(pan)) return { key: '银联', label: '银联 UnionPay' };
-  return null;
-}
-function lookupBin() {
-  const el = document.getElementById('binInput');
-  if (!el) return;
-  const pan = el.value.replace(/\D/g, '').slice(0, 8);
-  if (pan.length < 6) { alert('请输入卡号前 6 位'); return; }
-  const org = detectOrg(pan);
-  if (!org) { renderBinResult(null, [], [], pan); return; }
-  const exact = CARDS.filter(c => (c.bins || []).some(b => {
-    const s = String(b).replace(/\D/g, '');
-    return s.length >= 6 && pan.startsWith(s);
-  }));
-  const cand = CARDS.filter(c => (c.cardOrg || '').includes(org.key))
-                    .sort((a, b) => a.tier - b.tier || costNum(a) - costNum(b));
-  renderBinResult(org, cand, exact, pan);
-}
-function renderBinResult(org, cand, exact, pan) {
-  const app = document.getElementById('app');
-  const head = org
-    ? `识别为 <b>${org.label}</b>（卡号 ${esc(pan.slice(0, 6))}••••）`
-    : `未能识别卡组织（卡号 ${esc(pan.slice(0, 6))}••••）。多为较新卡段或非主流组织。`;
-
-  let statusHtml;
-  if (exact.length) {
-    statusHtml = `<div class="bin-exact">
-      <div class="be-t">🎯 精确匹配：这张卡就是以下这张</div>
-      ${exact.map(c => `<div class="be-card" onclick="showDetail(${c._i})">${esc(c.bank)} · ${esc(c.cardName)} → 看完整权益</div>`).join('')}
-    </div>`;
-  } else if (cand.length) {
-    statusHtml = `<div class="bin-cand">
-      <div class="bc-t">⚠️ 卡库暂未精确收录该卡号，<b>无法 100% 确认是哪张</b>。以下是同属 <b>${org.label}</b> 的候选卡，请你点开认领手上的那张、对比权益：</div>
-      <div class="list">${cand.map(c => cardHTML(c)).join('')}</div>
-    </div>`;
-  } else {
-    statusHtml = `<div class="empty">卡库暂无 ${org ? org.label : '该组织'} 的卡。</div>`;
-  }
-
-  const fbHtml = `<div class="bin-feedback">
-    <div class="bf-t">${exact.length ? '以上不是你的卡？' : '没找到你的卡？'}</div>
-    <p class="bf-d">卡库由社区维护。留下卡号前 6 位和你的判断，<b>创作者核对后会把这张卡补录进卡库</b>，下次就能精确匹配。</p>
-    <textarea id="binFb" rows="3" placeholder="卡号前6位 ${esc(pan.slice(0, 6))} · 你认为是哪张卡（银行+卡名） · 其他线索（年费/权益等）"></textarea>
-    <div class="bf-btns">
-      <button class="btn-primary" onclick="openBinFeedback('${pan}','${org ? org.key : ''}')">提交到 GitHub</button>
-      <button class="link" onclick="copyBinFeedback('${pan}')">复制内容</button>
-    </div>
-  </div>`;
-
-  app.innerHTML = `<section class="view">
-    <div class="view-head"><h2>🔢 查我的卡</h2><button class="link" onclick="goHome()">← 首页</button></div>
-    <p class="hint">${head}。仅作卡组织识别与权益展示，不做任何卡验证。</p>
-    ${statusHtml}
-    ${fbHtml}
-  </section>`;
-  window.scrollTo(0, 0);
-}
-function openBinFeedback(pan, orgKey) {
-  const ta = document.getElementById('binFb');
-  const detail = ta ? ta.value.trim() : '';
-  const map = { 'Visa': 'Visa', '万事达': 'Mastercard', '运通': 'American Express', '银联': '银联 UnionPay' };
-  const orgLabel = orgKey ? (map[orgKey] || orgKey) : '无法识别';
-  const title = '查卡反馈：卡号前6位 ' + pan.slice(0, 6);
-  const body = `卡号前 6 位：${pan.slice(0, 6)}\n识别到的卡组织：${orgLabel}\n\n用户补充（银行+卡名/线索）：\n${detail || '（未填写）'}\n\n—— 由「查我的卡」功能提交`;
-  window.open('https://github.com/hidechinazqf/credit-card-selector/issues/new?title=' + encodeURIComponent(title) + '&body=' + encodeURIComponent(body), '_blank');
-}
-function copyBinFeedback(pan) {
-  const ta = document.getElementById('binFb');
-  const detail = ta ? ta.value.trim() : '';
-  const text = `查卡反馈：卡号前6位 ${pan.slice(0, 6)}\n用户补充：${detail || '（未填写）'}\n提 Issue：https://github.com/hidechinazqf/credit-card-selector/issues/new`;
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(text).then(() => alert('已复制，去仓库提 Issue 或发给创作者即可 🙏')).catch(() => alert(text));
-  } else { alert(text); }
-}
-
 /* ---------- 视图：首页 ---------- */
 function goHome() {
   const app = document.getElementById('app');
@@ -187,7 +95,6 @@ function goHome() {
           <div class="entry-d">攒里程 / 攒酒店 / 外卡内地用 / 腾讯京东返现</div>
         </button>
       </div>
-      ${binLookupHTML()}
       <p class="hint">当前卡库共 ${CARDS.length} 张（${CARDS.filter(c => c.verifyStatus === '✅在售').length} 在售 / ${CARDS.filter(c => c.verifyStatus !== '✅在售').length} 待复核），覆盖四档：从学生低门槛到高端刚性年费。数据由社区维护，初始于 2026-08-15 经联网核验，权益请以银行官方为准。</p>
     </section>`;
 }
