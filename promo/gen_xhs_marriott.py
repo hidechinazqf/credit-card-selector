@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # 生成小红书图文：中信万豪新增「金卡」「白金卡」两张卡 + 选卡器推广
-# 4 张竖图 1080x1350，文案烤进图内。复用 style.css 的 modal 样式。
+# 只保留"内容"（卡片详情 / 工具信息），不烤标题，避免标题压字。竖图 1080x1350。
 import json, html
 
 D = json.load(open('data/cards.json', encoding='utf-8'))
@@ -23,13 +23,7 @@ COMMON_CSS = """
   body { width: 1080px; height: 1350px; background: #0f172a;
     font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
     display: flex; flex-direction: column; overflow: hidden; }
-  .cap { flex: 0 0 auto; overflow: hidden; color: #fff;
-    display: flex; flex-direction: column; justify-content: center;
-    padding: 44px 72px; background: linear-gradient(135deg, #0f172a, #1e293b); }
-  .cap .k { font-size: 26px; color: #fbbf24; letter-spacing: 4px; margin-bottom: 12px; }
-  .cap .t { font-size: 54px; font-weight: 800; line-height: 1.22; }
-  .cap .s { font-size: 25px; color: #cbd5e1; margin-top: 16px; line-height: 1.45; }
-  #app { flex: 1 1 auto; position: relative; background: #fff; overflow: hidden; }
+  #app { flex: 1 1 auto; background: #fff; overflow: hidden; }
 """
 
 def perk_groups(c):
@@ -66,82 +60,41 @@ def detail_html(c):
   </div>"""
 
 MODAL_CSS = """
-  #app .modal-mask { background: rgba(15,23,42,.04); display:flex; align-items:flex-start; justify-content:center; }
-  #app .modal { width: 920px; max-height: 980px; overflow:auto; margin-top: 24px; }
-  #app .modal h2 { font-size: 42px; }
-  #app .card-line { font-size: 25px; }
-  #app .perk-cat { font-size: 25px; }
-  #app .perk-group li { font-size: 22px; }
-  #app .scene-tip { font-size: 23px; }
+  #app .modal-mask { background: #f8fafc; display:flex; align-items:center; justify-content:center; }
+  #app .modal { width: 960px; max-height: 1300px; overflow:auto; }
+  #app .modal h2 { font-size: 46px; }
+  #app .card-line { font-size: 27px; }
+  #app .perk-cat { font-size: 27px; }
+  #app .perk-group li { font-size: 23px; }
+  #app .scene-tip { font-size: 24px; }
 """
 
-# ---------- 封面 ----------
-cover = f"""<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8">
-<style>{COMMON_CSS}
-  .cap {{ flex: 1 1 auto; padding: 0 80px; justify-content: center; }}
-  .cap .k {{ font-size: 30px; }}
-  .cap .t {{ font-size: 84px; line-height: 1.2; }}
-  .cap .bullets {{ margin-top: 48px; }}
-  .cap .bullets div {{ font-size: 32px; color: #e2e8f0; margin: 16px 0; }}
-  .cap .foot {{ margin-top: 60px; font-size: 28px; color: #fbbf24; letter-spacing: 2px; }}
-</style></head><body>
-  <div class="cap">
-    <div class="k">信用卡选卡助手 · 数据更新</div>
-    <div class="t">中信万豪联名卡<br>新增 2 张！</div>
-    <div class="bullets">
-      <div>🟢 <b>金卡</b>：免年费，送 5 房晚 + 银卡会籍</div>
-      <div>🟡 <b>白金卡</b>：6800 刚性，15 房晚 + 2 晚 35000 分免房券</div>
-    </div>
-    <div class="foot">45 张卡 · 免费开源 · 一键对比</div>
-  </div>
-</body></html>"""
-
-# ---------- 金卡 ----------
+# ---------- 金卡（仅卡片内容，无标题） ----------
 gold_img = f"""<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8">
 <link rel="stylesheet" href="../assets/css/style.css">
-<style>{COMMON_CSS}
-  .cap {{ background: linear-gradient(135deg, #065f46, #047857); }}
-  .cap .k {{ color: #6ee7b7; }}
-  .cap .s {{ color: #d1fae5; }}
-{MODAL_CSS}
-</style></head><body>
-  <div class="cap"><div class="k">🆕 新卡 ①｜中信万豪金卡</div>
-    <div class="t">免年费入门万豪</div>
-    <div class="s">年费 200 刷卡免 · 实际成本 0 · 银卡会籍 + 5 房晚</div></div>
+<style>{COMMON_CSS}{MODAL_CSS}</style></head><body>
   <div id="app">{detail_html(gold)}</div>
 </body></html>"""
 
-# ---------- 白金卡 ----------
+# ---------- 白金卡（仅卡片内容，无标题） ----------
 plat_img = f"""<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8">
 <link rel="stylesheet" href="../assets/css/style.css">
-<style>{COMMON_CSS}
-  .cap {{ background: linear-gradient(135deg, #78350f, #b45309); }}
-  .cap .k {{ color: #fcd34d; }}
-  .cap .s {{ color: #fde68a; }}
-{MODAL_CSS}
-</style></head><body>
-  <div class="cap"><div class="k">🆕 新卡 ②｜中信万豪白金卡</div>
-    <div class="t">6800 刚性 · 保级神器</div>
-    <div class="s">金卡会籍 + 15 房晚 + 2 晚 35000 分免房券</div></div>
+<style>{COMMON_CSS}{MODAL_CSS}</style></head><body>
   <div id="app">{detail_html(plat)}</div>
 </body></html>"""
 
-# ---------- 选卡器推广 ----------
+# ---------- 选卡器推广（仅内容，无标题） ----------
+PROMO_CSS = """
+  #app { padding: 90px 100px; color:#0f172a; display:flex; flex-direction:column; justify-content:center; }
+  #app .feat { font-size: 32px; line-height: 1.8; margin: 10px 0 40px; }
+  #app .feat div { margin: 20px 0; }
+  #app .linkbox { background:#f1f5f9; border:2px dashed #64748b; border-radius:16px; padding:30px 34px; }
+  #app .linkbox .lab { font-size:24px; color:#64748b; margin-bottom:12px; }
+  #app .linkbox .url { font-size:27px; font-weight:700; color:#0f172a; word-break:break-all; }
+  #app .git { font-size:24px; color:#475569; margin-top:30px; word-break:break-all; }
+"""
 promo = f"""<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8">
-<style>{COMMON_CSS}
-  .cap {{ background: linear-gradient(135deg, #0f172a, #312e81); }}
-  .cap .k {{ color: #a5b4fc; }}
-  #app {{ padding: 60px 80px; color: #0f172a; }}
-  #app .feat {{ font-size: 30px; line-height: 1.8; margin: 10px 0 36px; }}
-  #app .feat div {{ margin: 18px 0; }}
-  #app .linkbox {{ background:#f1f5f9; border:2px dashed #64748b; border-radius:16px; padding:28px 32px; }}
-  #app .linkbox .lab {{ font-size:24px; color:#64748b; margin-bottom:10px; }}
-  #app .linkbox .url {{ font-size:27px; font-weight:700; color:#0f172a; word-break:break-all; }}
-  #app .git {{ font-size:24px; color:#475569; margin-top:28px; word-break:break-all; }}
-</style></head><body>
-  <div class="cap"><div class="k">🔗 这些卡在哪看？</div>
-    <div class="t">免费选卡器 · 一键对比</div>
-    <div class="s">45 张卡按条件筛 · 查权益 · 并排对比</div></div>
+<style>{COMMON_CSS}{PROMO_CSS}</style></head><body>
   <div id="app">
     <div class="feat">
       <div>✅ 按银行 / 档位 / 年费 / 权益 / 场景筛选</div>
@@ -157,6 +110,6 @@ promo = f"""<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8">
   </div>
 </body></html>"""
 
-for name, content in [('xhs_cover', cover), ('xhs_gold', gold_img), ('xhs_plat', plat_img), ('xhs_promo', promo)]:
+for name, content in [('xhs_gold', gold_img), ('xhs_plat', plat_img), ('xhs_promo', promo)]:
     open(f'promo/{name}.html', 'w', encoding='utf-8').write(content)
-print('wrote xhs_cover / xhs_gold / xhs_plat / xhs_promo html')
+print('wrote xhs_gold / xhs_plat / xhs_promo html (no captions)')
