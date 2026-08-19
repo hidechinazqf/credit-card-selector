@@ -22,14 +22,14 @@ COMMON_CSS = """
   html, body { margin: 0; padding: 0; }
   body { width: 1080px; height: 1350px; background: #0f172a;
     font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
-    overflow: hidden; }
-  .cap { position: absolute; top: 0; left: 0; right: 0; height: 340px; z-index: 99999;
-    background: linear-gradient(135deg, #0f172a, #1e293b); color: #fff;
-    display: flex; flex-direction: column; justify-content: center; padding: 0 72px; }
-  .cap .k { font-size: 26px; color: #fbbf24; letter-spacing: 4px; margin-bottom: 14px; }
-  .cap .t { font-size: 58px; font-weight: 800; line-height: 1.25; }
-  .cap .s { font-size: 27px; color: #cbd5e1; margin-top: 18px; line-height: 1.5; }
-  #app { position: absolute; top: 340px; left: 0; right: 0; bottom: 0; background: #fff; overflow: hidden; }
+    display: flex; flex-direction: column; overflow: hidden; }
+  .cap { flex: 0 0 auto; overflow: hidden; color: #fff;
+    display: flex; flex-direction: column; justify-content: center;
+    padding: 44px 72px; background: linear-gradient(135deg, #0f172a, #1e293b); }
+  .cap .k { font-size: 26px; color: #fbbf24; letter-spacing: 4px; margin-bottom: 12px; }
+  .cap .t { font-size: 54px; font-weight: 800; line-height: 1.22; }
+  .cap .s { font-size: 25px; color: #cbd5e1; margin-top: 16px; line-height: 1.45; }
+  #app { flex: 1 1 auto; position: relative; background: #fff; overflow: hidden; }
 """
 
 def perk_groups(c):
@@ -78,7 +78,7 @@ MODAL_CSS = """
 # ---------- 封面 ----------
 cover = f"""<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8">
 <style>{COMMON_CSS}
-  .cap {{ height: 1350px; padding: 0 80px; justify-content: center; }}
+  .cap {{ flex: 1 1 auto; padding: 0 80px; justify-content: center; }}
   .cap .k {{ font-size: 30px; }}
   .cap .t {{ font-size: 84px; line-height: 1.2; }}
   .cap .bullets {{ margin-top: 48px; }}
