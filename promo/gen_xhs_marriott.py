@@ -34,62 +34,67 @@ COMMON_CSS = """
   .cap .foot { margin-top: 60px; font-size: 28px; color: #fbbf24; letter-spacing: 2px; }
 """
 
-def perk_groups(c):
-    groups = {}
-    for p in (c.get('perks') or []):
-        groups.setdefault(p['cat'], []).append(p['text'])
-    out = []
-    for cat, items in groups.items():
-        lis = ''.join(f'<li>{ESC(t)}</li>' for t in items)
-        out.append(f'<div class="perk-group"><div class="perk-cat">{ESC(cat)}</div><ul>{lis}</ul></div>')
-    return ''.join(out)
-
-def detail_html(c):
-    scene_tip = ''
-    if '海外AI订阅' in (c.get('scenes') or []):
-        scene_tip = ('<div class="scene-tip">🤖 <b>可用于海外订阅 ChatGPT / Grok / Claude 等</b>：'
-                     '需 Visa / 万事达 / 运通外币卡，并在银行 App 开通「境外无卡支付」。</div>')
-    note = f'<div class="card-note">📌 {ESC(c["note"])}</div>' if c.get('note') else ''
-    return f"""
-  <div class="modal-mask">
-    <div class="modal">
-      <span class="badge {TCLS[c['tier']]}">{TIERS[c['tier']]}</span>
-      <h2>{ESC(c['cardName'])}</h2>
-      <div class="card-bank">{ESC(c['bank'])} · {ESC(c['cardOrg'])}</div>
-      <div class="card-line"><span>年费</span>{ESC(c.get('annualFee',''))}</div>
-      <div class="card-line"><span>实际成本</span>{ESC(c.get('realCost',''))}</div>
-      <div class="card-line"><span>核心权益</span>{ESC(c.get('benefits',''))}</div>
-      {scene_tip}
-      <div class="perk-wrap"><div class="perk-title">完整权益清单</div>{perk_groups(c)}</div>
-      <div class="card-line"><span>办卡门槛</span>{ESC(c.get('eligibility',''))}</div>
-      <div class="card-line"><span>核验状态</span><span class="verify ok">{ESC(c.get('verifyStatus',''))}</span> <small>({ESC(c.get('verifyDate',''))})</small></div>
-      {note}
-    </div>
-  </div>"""
-
-MODAL_CSS = """
-  #app .modal-mask { background: #f8fafc; display:flex; align-items:center; justify-content:center; }
-  #app .modal { width: 960px; max-height: 1300px; overflow:auto; }
-  #app .modal h2 { font-size: 46px; }
-  #app .card-line { font-size: 27px; }
-  #app .perk-cat { font-size: 27px; }
-  #app .perk-group li { font-size: 23px; }
-  #app .scene-tip { font-size: 24px; }
+INFO_CSS = """
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { width: 1080px; height: 1350px; background: #fff;
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+    overflow: hidden; }
+  .wrap { padding: 84px 92px; height: 1350px; display: flex; flex-direction: column; }
+  .tag { display: inline-block; font-size: 25px; color: #fff; background: var(--accent);
+    border-radius: 10px; padding: 8px 18px; margin-bottom: 22px; }
+  .title { font-size: 64px; font-weight: 800; color: #0f172a; }
+  .sub { font-size: 30px; color: #64748b; margin-top: 14px; }
+  .chips { display: flex; gap: 18px; margin: 42px 0 38px; flex-wrap: wrap; }
+  .chip { background: #f1f5f9; border-radius: 16px; padding: 18px 26px; }
+  .chip .lab { font-size: 23px; color: #94a3b8; }
+  .chip .val { font-size: 31px; font-weight: 700; color: #0f172a; margin-top: 6px; }
+  .pts { list-style: none; padding: 0; margin: 0; }
+  .pts li { font-size: 29px; line-height: 1.6; color: #1e293b; margin: 20px 0;
+    padding-left: 38px; position: relative; }
+  .pts li::before { content: "•"; position: absolute; left: 6px; color: var(--accent); font-size: 34px; }
+  .foot { margin-top: auto; font-size: 25px; color: #64748b; border-top: 1px solid #e2e8f0; padding-top: 26px; }
 """
 
-# ---------- 金卡（仅卡片内容，无标题） ----------
-gold_img = f"""<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8">
-<link rel="stylesheet" href="../assets/css/style.css">
-<style>{COMMON_CSS}{MODAL_CSS}</style></head><body>
-  <div id="app">{detail_html(gold)}</div>
+def infographic(c, accent, tag, subtitle, chips, points, foot):
+    chip_html = ''.join(
+        f'<div class="chip"><div class="lab">{lab}</div><div class="val">{val}</div></div>'
+        for lab, val in chips)
+    pts_html = ''.join(f'<li>{p}</li>' for p in points)
+    return f"""<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8">
+<style>{INFO_CSS}</style></head><body style="--accent:{accent}">
+  <div class="wrap">
+    <span class="tag">{tag}</span>
+    <div class="title">{c['cardName']}</div>
+    <div class="sub">{subtitle}</div>
+    <div class="chips">{chip_html}</div>
+    <ul class="pts">{pts_html}</ul>
+    <div class="foot">{foot}</div>
+  </div>
 </body></html>"""
 
-# ---------- 白金卡（仅卡片内容，无标题） ----------
-plat_img = f"""<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8">
-<link rel="stylesheet" href="../assets/css/style.css">
-<style>{COMMON_CSS}{MODAL_CSS}</style></head><body>
-  <div id="app">{detail_html(plat)}</div>
-</body></html>"""
+# ---------- 金卡（精简信息图，内容写进图里，不截断） ----------
+gold_img = infographic(
+    gold, '#047857', '新卡 ①', '免年费入门万豪',
+    [('年费', '200 刷卡免'), ('会籍', '银卡'), ('房晚', '5 个')],
+    ['年费 200 元：核卡 30 天内消费/取现 1 次免首年，首年再 5 次免次年 → 实际成本 0',
+     '自动匹配万豪银卡会籍 + 5 个定级房晚',
+     '酒店消费每 18 元得 2 分，其他合格消费每 18 元得 1 分',
+     '万豪旗下住宿 / 购物 / 餐饮 9 折',
+     '银联单币，无外币通道（不能海外订阅）'],
+    '适合想低成本入门万豪、攒房晚保级的人')
+
+# ---------- 白金卡（精简信息图，内容写进图里，不截断） ----------
+plat_img = infographic(
+    plat, '#b45309', '新卡 ②', '6800 刚性 · 保级神器',
+    [('年费', '6800 刚性'), ('会籍', '金卡'), ('房晚', '15 个')],
+    ['年费 6800 元，刚性不减免',
+     '金卡会籍 + 15 个定级房晚',
+     '每年 2 晚免房券（各 35000 分，京沪奢华酒店易用出 4000+）',
+     '年合格消费满 50 万再送 1 晚 + 尊贵白金会籍',
+     '酒店消费每 10 元得 3 分；每年 16 次机场 / 32 次高铁贵宾厅',
+     'Visa 版可海外订阅 ChatGPT / Grok / Claude 等'],
+    '适合高频住万豪、需要保级 / 冲刺白金会籍的人')
 
 # ---------- 选卡器推广（仅内容，无标题） ----------
 PROMO_CSS = """
