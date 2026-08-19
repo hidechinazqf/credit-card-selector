@@ -24,6 +24,14 @@ COMMON_CSS = """
     font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
     display: flex; flex-direction: column; overflow: hidden; }
   #app { flex: 1 1 auto; background: #fff; overflow: hidden; }
+  .cap { flex: 1 1 auto; color: #fff;
+    display: flex; flex-direction: column; justify-content: center; padding: 0 80px;
+    background: linear-gradient(135deg, #0f172a, #1e293b); }
+  .cap .k { font-size: 30px; color: #fbbf24; letter-spacing: 4px; margin-bottom: 16px; }
+  .cap .t { font-size: 84px; font-weight: 800; line-height: 1.2; }
+  .cap .bullets { margin-top: 48px; }
+  .cap .bullets div { font-size: 32px; color: #e2e8f0; margin: 16px 0; }
+  .cap .foot { margin-top: 60px; font-size: 28px; color: #fbbf24; letter-spacing: 2px; }
 """
 
 def perk_groups(c):
@@ -110,6 +118,19 @@ promo = f"""<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8">
   </div>
 </body></html>"""
 
-for name, content in [('xhs_gold', gold_img), ('xhs_plat', plat_img), ('xhs_promo', promo)]:
+cover = f"""<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8">
+<style>{COMMON_CSS}</style></head><body>
+  <div class="cap">
+    <div class="k">信用卡选卡助手 · 数据更新</div>
+    <div class="t">中信万豪联名卡<br>新增 2 张！</div>
+    <div class="bullets">
+      <div>🟢 <b>金卡</b>：免年费，送 5 房晚 + 银卡会籍</div>
+      <div>🟡 <b>白金卡</b>：6800 刚性，15 房晚 + 2 晚 35000 分免房券</div>
+    </div>
+    <div class="foot">45 张卡 · 免费开源 · 一键对比</div>
+  </div>
+</body></html>"""
+
+for name, content in [('xhs_cover', cover), ('xhs_gold', gold_img), ('xhs_plat', plat_img), ('xhs_promo', promo)]:
     open(f'promo/{name}.html', 'w', encoding='utf-8').write(content)
-print('wrote xhs_gold / xhs_plat / xhs_promo html (no captions)')
+print('wrote xhs_cover / xhs_gold / xhs_plat / xhs_promo html')
