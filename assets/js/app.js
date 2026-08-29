@@ -48,6 +48,22 @@ function costNum(c) {
 function isStudentFriendly(c) {
   return c.tier === 1 || /校园|青年|毕业|学生|零额度|大专/.test(c.eligibility || '');
 }
+function hasPerk(c, cat) { return (c.perks || []).some(p => p.cat === cat); }
+// 收集所有「即将/已生效」的变动项，供变动中心使用
+function allPending() {
+  const TODAY = '2026-08-29';
+  const out = [];
+  CARDS.forEach(c => (c.pendingChanges || []).forEach(pc => {
+    out.push({ c, ...pc, overdue: pc.date !== '待核实' && pc.date < TODAY });
+  }));
+  // 待核实排最后；其余按日期升序（近的在前）
+  out.sort((a, b) => {
+    if (a.date === '待核实' && b.date !== '待核实') return 1;
+    if (b.date === '待核实' && a.date !== '待核实') return -1;
+    return a.date < b.date ? -1 : 1;
+  });
+  return out;
+}
 function esc(s) {
   return String(s == null ? '' : s).replace(/[&<>"]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[m]));
 }
@@ -74,10 +90,17 @@ async function boot() {
 /* ---------- 视图：首页 ---------- */
 function goHome() {
   const app = document.getElementById('app');
+  const pend = allPending();
+  const pendBanner = pend.length ? `
+    <div class="chg-banner" onclick="renderChanges()">
+      <span class="chg-bell">⚠️</span>
+      <span><b>${pend.length}</b> 条权益变动待关注（${pend.filter(p=>!p.overdue).length} 条即将生效），点击查看变动公告 →</span>
+    </div>` : '';
   app.innerHTML = `
     <section class="hero">
       <h1>按你的需求，挑一张合适的信用卡</h1>
       <p class="sub">纯信息对比，不代办、不跳申卡、不收费。数据可改、可开源。</p>
+      ${pendBanner}
       <div class="entries">
         <button class="entry" onclick="renderFilter()">
           <div class="entry-ico">🔎</div>
@@ -93,6 +116,11 @@ function goHome() {
           <div class="entry-ico">🏆</div>
           <div class="entry-t">场景榜 · 哪个卡最好</div>
           <div class="entry-d">攒里程 / 攒酒店 / 外卡内地用 / 腾讯京东返现</div>
+        </button>
+        <button class="entry" onclick="renderChanges()">
+          <div class="entry-ico">📣</div>
+          <div class="entry-t">权益变动公告</div>
+          <div class="entry-d">近期缩水 / 升级 / 口径预警一览</div>
         </button>
       </div>
       <p class="hint">当前卡库共 ${CARDS.length} 张（${CARDS.filter(c => c.verifyStatus === '✅在售').length} 在售 / ${CARDS.filter(c => c.verifyStatus !== '✅在售').length} 待复核），覆盖四档：从学生低门槛到高端刚性年费。数据由社区维护，初始于 2026-08-15 经联网核验，权益请以银行官方为准。</p>
@@ -128,6 +156,41 @@ function goLeaderboard() {
       <div class="view-head"><h2>🏆 场景榜 · 哪个卡最好</h2><button class="link" onclick="goHome()">← 首页</button></div>
       <p class="hint">编辑基于 2026-08-15 联网调研精选，卡库内均可点开详情。权益缩水频繁，比例以银行当期公告为准。</p>
       <div class="lb-wrap">${sections}</div>
+    </section>`;
+}
+
+/* ---------- 视图：权益变动公告 ---------- */
+function renderChanges() {
+  const app = document.getElementById('app');
+  const items = allPending();
+  const typeClass = { '缩水': 't-cut', '升级': 't-up', '预警': 't-warn' };
+  const section = (title, list, cls) => {
+    if (!list.length) return '';
+    const rows = list.map(p => {
+      const idx = p.c._i;
+      const pc = typeClass[p.type] || 't-warn';
+      return `<li class="chg-item ${cls}">
+        <span class="chg-type ${pc}">${p.type}</span>
+        <div class="chg-body">
+          <div class="chg-head"><span class="chg-date">${esc(p.date)}</span> · <a class="chg-card" onclick="showDetail(${idx})">${esc(p.c.cardName)}</a> <span class="chg-bank">${esc(p.c.bank)}</span></div>
+          <div class="chg-title">${esc(p.title)}</div>
+          ${p.desc ? `<div class="chg-desc">${esc(p.desc)}</div>` : ''}
+          ${p.source ? `<div class="chg-src">来源：${esc(p.source)}</div>` : ''}
+        </div>
+      </li>`;
+    }).join('');
+    return `<div class="chg-section"><h3>${title}（${list.length}）</h3><ul class="chg-list">${rows}</ul></div>`;
+  };
+  const upcoming = items.filter(p => p.date !== '待核实' && !p.overdue);
+  const past = items.filter(p => p.overdue);
+  const unsure = items.filter(p => p.date === '待核实');
+  app.innerHTML = `
+    <section class="view">
+      <div class="view-head"><h2>📣 权益变动公告</h2><button class="link" onclick="goHome()">← 首页</button></div>
+      <p class="hint">本工具卡库为「社区维护快照」，权益随时间变化。以下为近期检索到的银行公告与口径变动，供你做决定前参考；最终以银行官方为准。</p>
+      ${section('🔜 即将生效', upcoming, 'is-up')}
+      ${section('✅ 已生效', past, 'is-past')}
+      ${section('❓ 口径待核实', unsure, 'is-unsure')}
     </section>`;
 }
 
@@ -284,8 +347,11 @@ function cardHTML(c) {
   const _pcats = uniq((c.perks || []).map(p => p.cat));
   const _prio = ['贵宾厅', '接送机', '代驾', '返现', '航空里程', '酒店会籍', '酒店积分', '平台返现', '健康医疗', '运动健身', '出行保障', '生活礼遇', '其他'];
   const pcats = _prio.filter(cat => _pcats.includes(cat)).concat(_pcats.filter(cat => !_prio.includes(cat))).slice(0, 4);
+  const _pend = (c.pendingChanges || []);
+  const _pendBadge = _pend.length ? `<span class="corner-warn" title="近期有权益变动，点击卡片查看">⚠ ${_pend.length}</span>` : '';
   return `
     <article class="card">
+      ${_pendBadge}
       <div class="card-top">
         <span class="badge ${TIERS[c.tier].cls}">${TIERS[c.tier].label}</span>
         <span class="verify ${vBadge}" title="核验状态">${esc(c.verifyStatus)}</span>
@@ -373,13 +439,96 @@ function showDetail(i) {
       <div class="card-line"><span>核心权益</span>${esc(c.benefits)}</div>
       ${(c.scenes || []).includes('海外AI订阅') ? `<div class="scene-tip">🤖 <b>可用于海外订阅 ChatGPT / Grok / Claude / Gemini 等</b>：需为 Visa / Mastercard / 运通（单标或双标）外币卡，并在银行 App 开通「境外无卡支付」。纯银联单标卡（62 开头）通常无法订阅；运通卡建议先用小额测试，成功率略低于 Visa / Mastercard。</div>` : ''}
       <div class="perk-wrap"><div class="perk-title">完整权益清单</div>${renderPerks(c)}</div>
+      ${renderPending(c)}
       <div class="card-line"><span>办卡门槛</span>${esc(c.eligibility)}</div>
       <div class="card-line"><span>核验状态</span><span class="verify ${v}">${esc(c.verifyStatus)}</span> <small>（${esc(c.verifyDate)}）</small></div>
       ${c.note ? `<div class="card-note">📌 ${esc(c.note)}</div>` : ''}
+      ${costNum(c) > 0 ? renderRoi(c) : ''}
+      <div class="modal-actions">
+        <button class="btn-mini" onclick="openFeedback(${c._i})">⚠️ 权益变了？反馈</button>
+      </div>
       <p class="modal-foot">仅供参考，以银行官方为准。</p>
     </div>`;
   overlay.onclick = e => { if (e.target === overlay) overlay.remove(); };
   document.body.appendChild(overlay);
+}
+
+/* ---------- 详情：pendingChanges 区块 ---------- */
+function renderPending(c) {
+  const pc = c.pendingChanges || [];
+  if (!pc.length) return '';
+  const tp = { '缩水': 't-cut', '升级': 't-up', '预警': 't-warn' };
+  const rows = pc.map(p => `<li class="pend-item">
+    <span class="chg-type ${tp[p.type] || 't-warn'}">${esc(p.type)}</span>
+    <span class="pend-date">${esc(p.date)}</span>
+    <span class="pend-title">${esc(p.title)}</span>
+    ${p.desc ? `<div class="pend-desc">${esc(p.desc)}</div>` : ''}
+    ${p.source ? `<div class="pend-src">来源：${esc(p.source)}</div>` : ''}
+  </li>`).join('');
+  return `<div class="pend-wrap"><div class="perk-title">⚠️ 近期权益变动</div><ul class="pend-list">${rows}</ul></div>`;
+}
+
+/* ---------- 详情：年费回本估算器 ---------- */
+function renderRoi(c) {
+  const i = c._i;
+  const hasCash = hasPerk(c, '返现') || hasPerk(c, '平台返现');
+  const hasLounge = hasPerk(c, '贵宾厅');
+  const hasTransfer = hasPerk(c, '接送机');
+  const hasDaijia = hasPerk(c, '代驾');
+  const hasHealth = hasPerk(c, '健康医疗');
+  const inp = (id, label, hint) => `<label class="roi-inp"><span>${label}</span><input type="number" id="${id}" value="0" min="0">${hint ? `<em>${hint}</em>` : ''}</label>`;
+  const rows = [];
+  if (hasCash) rows.push(inp('roiCash_' + i, '预计年返现', '元'));
+  if (hasLounge) rows.push(inp('roiLounge_' + i, '年用贵宾厅', '次 ×150'));
+  if (hasTransfer) rows.push(inp('roiTransfer_' + i, '年用接送机', '次 ×150'));
+  if (hasDaijia) rows.push(inp('roiDaijia_' + i, '年代驾', '次 ×80'));
+  if (hasHealth) rows.push(`<div class="roi-fixed">健康医疗权益（洗牙/体检）按 ≈200 元/年 计入</div>`);
+  if (!rows.length) return '';
+  return `<div class="roi-wrap">
+    <div class="perk-title">💡 年费回本估算（粗估）</div>
+    <div class="roi-grid">${rows.join('')}</div>
+    <button class="btn-mini" onclick="calcRoi(${i})">估算是否回本</button>
+    <div id="roiRes_${i}" class="roi-res"></div>
+    <div class="roi-note">市场单价（贵宾厅/接送机 150、代驾 80、洗牙体检 200）仅为行业常见参考，且未计入里程/积分等难以估值的权益。结果仅供参考，非银行官方口径。</div>
+  </div>`;
+}
+function calcRoi(i) {
+  const c = CARDS[i];
+  const v = id => { const el = document.getElementById(id); return el ? (parseFloat(el.value) || 0) : 0; };
+  let value = 0;
+  if (hasPerk(c, '返现') || hasPerk(c, '平台返现')) value += v('roiCash_' + i);
+  if (hasPerk(c, '贵宾厅')) value += v('roiLounge_' + i) * 150;
+  if (hasPerk(c, '接送机')) value += v('roiTransfer_' + i) * 150;
+  if (hasPerk(c, '代驾')) value += v('roiDaijia_' + i) * 80;
+  if (hasPerk(c, '健康医疗')) value += 200;
+  const fee = costNum(c);
+  const net = value - fee;
+  const verdict = net >= 0
+    ? `<b class="ok-verdict">按你填的用量，粗看已回本（估算权益价值约 ${value} 元 ≥ 年费 ${fee} 元）。</b>`
+    : `<b class="bad-verdict">按你填的用量，粗看还没回本（估算权益价值约 ${value} 元 < 年费 ${fee} 元）。</b> 这类高端卡往往靠你实际频次顶满才划算，别只看年费。`;
+  document.getElementById('roiRes_' + i).innerHTML = `估算权益价值 <b>${value}</b> 元 − 年费 <b>${fee}</b> 元 = <b>${net}</b> 元<br>${verdict}`;
+}
+
+/* ---------- 详情：纠错反馈入口（预填 GitHub Issue） ---------- */
+function openFeedback(i) {
+  const c = CARDS[i];
+  const title = encodeURIComponent('【权益复核】' + c.cardName + '（' + c.bank + '）');
+  const body = encodeURIComponent(
+    '## 卡片\n' +
+    '- 银行：' + c.bank + '\n' +
+    '- 卡名：' + c.cardName + '\n' +
+    '- 卡组织：' + c.cardOrg + '\n' +
+    '- 当前年费：' + c.annualFee + '\n' +
+    '- 核验日期：' + c.verifyDate + '\n\n' +
+    '## 当前权益摘要（工具内）\n' +
+    c.benefits + '\n\n' +
+    (c.perks || []).map(p => '- [' + p.cat + '] ' + p.text).join('\n') + '\n\n' +
+    '## 我发现的问题 / 最新变动\n' +
+    '（请在此填写：哪项权益变了？缩水 / 升级 / 停发？生效日期？最好附来源链接或截图）\n\n' +
+    '> 本 Issue 由「信用卡选卡助手」纠错入口预填，数据以银行官方为准。'
+  );
+  const url = 'https://github.com/hidechinazqf/credit-card-selector/issues/new?title=' + title + '&body=' + body;
+  window.open(url, '_blank', 'noopener');
 }
 
 /* ---------- 视图：问卷推荐 ---------- */
